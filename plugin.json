@@ -1,10 +1,10 @@
 {
-  "name": "Example Plugin",
-  "author": "John Doe",
-  "flags": ["debug", "_root"],
+  "name": "Syncthing",
+  "author": "Capypara",
+  "flags": ["debug"],
   "publish": {
-    "tags": ["template", "root"],
-    "description": "Decky example plugin.",
-    "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
+    "tags": ["syncthing", "services", "synchronization", "backup", "cloud", "files"],
+    "description": "Plugin for managing Syncthing to synchronize files with other devices.",
+    "image": "https://raw.githubusercontent.com/theCapypara/steamdeck-decky-syncthing/main/assets/logo.png"
   }
 }

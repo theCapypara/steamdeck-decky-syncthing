@@ -55,3 +55,6 @@ out/*
 cli/
 cli/*
 cli/decky
+
+# Virtualenvs
+.venv
