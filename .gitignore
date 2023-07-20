@@ -58,3 +58,5 @@ cli/decky
 
 # Virtualenvs
 .venv
+
+deploy-dev.sh
