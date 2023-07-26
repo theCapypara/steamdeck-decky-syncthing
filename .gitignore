@@ -60,3 +60,6 @@ cli/decky
 .venv
 
 deploy-dev.sh
+
+# rust
+target/

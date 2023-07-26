@@ -1,28 +1,31 @@
 import {useEffect, useState, VFC} from "react";
 import {
-    DialogButton, Field,
+    DialogButton,
+    Field,
     Focusable,
     Navigation,
     PanelSection,
     PanelSectionRow,
     Router,
-    ServerAPI, sleep,
+    ServerAPI,
+    sleep,
     SteamSpinner
 } from "decky-frontend-lib";
 import {FaGlobe, FaPowerOff, FaSyncAlt, FaWrench} from "react-icons/fa";
 import {SyncthingState} from "./SyncthingState";
-import {SyncthingProcessState} from "../State";
 import {Settings} from "../Settings";
 import {FolderPanel} from "./FolderPanel";
 import {DevicesPanel} from "./DevicesPanel";
+import {PLUGIN_API_GET_SETTINGS_JSON, SyncthingProcessState, WATCHDOG_PROXY_URL} from "../consts";
+import {WatchdogApi} from "../api/WatchdogApi";
+
+const MAX_TRIES = 150;
 
 export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
     const [state, setState] = useState<SyncthingProcessState | string>(SyncthingProcessState.Unknown);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [toggling, setToggling] = useState(false);
-
 
     const reloadState = async (updateLoading = true) => {
         console.info(`Decky Syncthing: loading context.`);
@@ -31,11 +34,12 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
         }
         setState(SyncthingProcessState.Unknown);
         setSettings(null);
-        const result = await serverApi.callPluginMethod<{}, string>("state", {});
-        if (result.success) {
-            console.info(`Decky Syncthing: loaded state: ${result.result}.`);
-            setState(result.result);
-            const settingsResult = await serverApi.callPluginMethod<{}, string>("get_settings_json", {});
+        let watchdogApi = new WatchdogApi();
+        try {
+            const newState = await watchdogApi.getState();
+            console.info(`Decky Syncthing: loaded state: ${newState}.`);
+            setState(newState);
+            const settingsResult = await serverApi.callPluginMethod<{}, string>(PLUGIN_API_GET_SETTINGS_JSON, {});
             if (settingsResult.success) {
                 console.info(`Decky Syncthing: loaded settings.`);
                 setSettings(JSON.parse(settingsResult.result));
@@ -44,9 +48,9 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
                 console.error(`Decky Syncthing: failed loading settings: ${settingsResult.result}`);
                 setError(settingsResult.result);
             }
-        } else {
-            console.error(`Decky Syncthing: failed loading state: ${result.result}`);
-            setError(`${result.result}`);
+        } catch (err) {
+            console.error(`Decky Syncthing: failed loading state: ${err}`);
+            setError(`${err}`);
         }
         if (updateLoading) {
             setLoading(false);
@@ -56,30 +60,44 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
 
     const toggleSyncthing = async() => {
         console.error(`Decky Syncthing: toggling`);
-        if (!toggling) {
-            setToggling(true);
-            switch (state) {
-                case SyncthingProcessState.Running:
-                case SyncthingProcessState.Wait:
-                    console.error(`Decky Syncthing: stopping...`);
-                    await serverApi.callPluginMethod("stop", {});
-                    await sleep(100);
-                    console.error(`Decky Syncthing: reloading state...`);
-                    await reloadState(false);
-                    break;
-                default:
-                    console.error(`Decky Syncthing: starting...`);
-                    await serverApi.callPluginMethod("start", {});
-                    await sleep(100);
-                    console.error(`Decky Syncthing: reloading state...`);
-                    while (SyncthingProcessState.Wait == await reloadState(false)) {
-                        console.error(`Decky Syncthing: still waiting...`);
-                        await sleep(1000);
-                    }
-                    break;
+        if (!loading) {
+            setLoading(true);
+            try {
+                const watchdogApi = new WatchdogApi();
+                switch (state) {
+                    case SyncthingProcessState.Running:
+                    case SyncthingProcessState.Wait:
+                        console.error(`Decky Syncthing: stopping...`);
+                        await watchdogApi.stop();
+                        await sleep(100);
+                        console.error(`Decky Syncthing: reloading state...`);
+                        await reloadState(false);
+                        break;
+                    default:
+                        console.error(`Decky Syncthing: starting...`);
+                        await watchdogApi.start();
+                        setState(SyncthingProcessState.Wait);
+                        await sleep(100);
+                        let i = 0;
+                        while (!(await watchdogApi.checkIfUp())) {
+                            console.error(`Decky Syncthing: still waiting...`);
+                            if (i++ >= MAX_TRIES) {
+                                // noinspection ExceptionCaughtLocallyJS
+                                throw new Error("Timeout.");
+                            }
+                            await sleep(200);
+                        }
+                        console.error(`Decky Syncthing: reloading state...`);
+                        await reloadState(false);
+                        break;
+                }
+            } catch (err) {
+                console.error(`Decky Syncthing: failed starting/stopping: ${err}`);
+                setState(SyncthingProcessState.Unknown);
+                setError(`${err}`);
             }
+            setLoading(false);
         }
-        setToggling(false);
     }
 
     useEffect(() => {
@@ -126,11 +144,9 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
                         <DialogButton
                             style={{minWidth: 0, width: "15%", height: "32px", padding: 0}}
                             onClick={() => {
-                                if (settings?.port) {
-                                    Router.CloseSideMenus();
-                                    console.info(`Decky Syncthing: opening https://localhost:${settings?.port}/`);
-                                    Navigation.NavigateToExternalWeb(`https://localhost:${settings?.port}/`);
-                                }
+                                Router.CloseSideMenus();
+                                console.info(`Decky Syncthing: opening ${WATCHDOG_PROXY_URL}`);
+                                Navigation.NavigateToExternalWeb(WATCHDOG_PROXY_URL);
                             }}
                         >
                             <FaGlobe/>

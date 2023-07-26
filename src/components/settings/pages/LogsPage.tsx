@@ -12,22 +12,24 @@ import {
 import {useCallback, useEffect, useState, VFC} from "react";
 import WithSuspense from "../../WithSuspense";
 import {FaSync} from "react-icons/fa";
-import {SyncthingProcessState} from "../../../State";
 import {Scrollable} from "../../Scrollable";
+import {PLUGIN_API_GET_LOG, SyncthingProcessState} from "../../../consts";
+import {WatchdogApi} from "../../../api/WatchdogApi";
 
 interface LogsPageProps {
     serverApi: ServerAPI
 }
 
 export const LogsPage: VFC<LogsPageProps> = ({serverApi}) => {
-    const [state, setState] = useState("... Loading");
+    const [state, setState] = useState<string>(SyncthingProcessState.Unknown);
 
     const reloadState = async () => {
-        const result = await serverApi.callPluginMethod<{}, string>("state", {});
-        if (result.success) {
-            setState(result.result);
-        } else {
-            setState(`!!! failed loading: ${result.result}`);
+        let watchdogApi = new WatchdogApi();
+        try {
+            const newState = await watchdogApi.getState();
+            setState(newState);
+        } catch (err) {
+            setState(`!!! failed loading: ${err}`);
         }
     };
 
@@ -72,7 +74,7 @@ const LogModal: VFC<LogModalProps> = ({state, serverApi, closeModal}) => {
                 setLog("Syncthing is not running.");
                 return;
             }
-            const result = await serverApi.callPluginMethod<{}, string>("get_log", {});
+            const result = await serverApi.callPluginMethod<{}, string>(PLUGIN_API_GET_LOG, {});
             if (result.success) {
                 setLog(result.result);
             } else {

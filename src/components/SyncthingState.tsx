@@ -1,6 +1,6 @@
 import {VFC} from "react";
-import {SyncthingProcessState} from "../State";
 import {FaHourglass, FaPlay, FaQuestionCircle, FaSkull, FaSkullCrossbones, FaStop} from "react-icons/fa";
+import {SyncthingProcessState} from "../consts";
 
 interface SyncthingStateProps {
     state: SyncthingProcessState | string

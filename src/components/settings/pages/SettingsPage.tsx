@@ -10,6 +10,8 @@ import {useEffect, useState, VFC} from "react";
 import WithSuspense from "../../WithSuspense";
 import Setting from "../../Setting";
 import {Settings} from "../../../Settings";
+import {PLUGIN_API_GET_SETTINGS_JSON, PLUGIN_API_SET_SETTING} from "../../../consts";
+import {WatchdogApi} from "../../../api/WatchdogApi";
 
 interface SetSettingParams {
     setting: string;
@@ -28,7 +30,7 @@ export const SettingsPage: VFC<SettingsPageProps> = ({serverApi}) => {
 
     useEffect(() => {
         const onLoad = async () => {
-            const currentValResult = await serverApi.callPluginMethod<{}, string>("get_settings_json", {});
+            const currentValResult = await serverApi.callPluginMethod<{}, string>(PLUGIN_API_GET_SETTINGS_JSON, {});
             if (currentValResult.success) {
                 console.info(`Decky Syncthing: loaded settings.`);
                 setSettings(JSON.parse(currentValResult.result));
@@ -42,7 +44,7 @@ export const SettingsPage: VFC<SettingsPageProps> = ({serverApi}) => {
     }, [serverApi]);
 
     const onChange = (setting: string, value: any) => {
-        serverApi.callPluginMethod<SetSettingParams, void>("set_setting", {
+        serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
             setting,
             value
         }).then(
@@ -53,7 +55,9 @@ export const SettingsPage: VFC<SettingsPageProps> = ({serverApi}) => {
                     console.error(`Decky Syncthing: FAILED setting ${setting} to ${value}: ${result.result}`)
                 }
             }
-        );
+        ).then(() => {
+            (new WatchdogApi()).reloadSettings();
+        });
         if (settings != null) {
             const newSettings: Settings = {...settings, [setting]: value}
             setSettings(newSettings);
