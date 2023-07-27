@@ -1,4 +1,5 @@
 mod api;
+mod panic_util;
 mod process_watchdog;
 mod proxy;
 mod settings;
@@ -6,10 +7,12 @@ mod state;
 mod util;
 
 use crate::api::handle_api;
+use crate::panic_util::register_panic_hook;
 use crate::process_watchdog::ProcessWatchdog;
 use crate::proxy::handle_proxy;
 use crate::settings::SettingsProvider;
 use crate::state::State;
+use hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
@@ -58,6 +61,7 @@ async fn main() -> ExitCode {
     }
 
     setup_self_logging(watchdog_log_dir_path);
+    register_panic_hook(watchdog_log_dir_path);
     info!("started.");
 
     let settings = SettingsProvider::new(settings_path, syncthing_log_path)
@@ -96,10 +100,14 @@ where
     SP: Deref<Target = SettingsProvider>,
     ST: Deref<Target = State>,
 {
-    match handle_api(&client_ip, &req, &settings, &state).await {
+    let mut response = match handle_api(&client_ip, &req, &settings, &state).await {
         Some(v) => v,
         None => handle_proxy(client_ip, req, &settings, &state).await,
-    }
+    }?;
+    response
+        .headers_mut()
+        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+    Ok(response)
 }
 
 fn update_pid_file(pid_file_path: &Path) {

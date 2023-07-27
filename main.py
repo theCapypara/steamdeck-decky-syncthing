@@ -111,19 +111,23 @@ def load_settings() -> Settings:
             logger.error(
                 f"Failed reading config, using default. Exception: {ex}",
             )
-            return default_settings()
+            return default_settings(save=True)
         if "config_version" not in settings or settings["config_version"] != 1:
             logger.error(f"Unsupported settings version, using default.")
-            return default_settings()
+            return default_settings(save=True)
         return settings
-    return default_settings()
+    return default_settings(save=True)
 
 
-def default_settings() -> Settings:
-    return Settings(
+def default_settings(*, save=False) -> Settings:
+    defaults = Settings(
         config_version=1,
         autostart=False,
         flatpak_name=DEFAULT_FLATPAK_NAME,
         port=DEFAULT_PORT,
         api_key="",
     )
+    if save:
+        with open(SETTINGS_PATH, "w") as f:
+            json.dump(defaults, f)
+    return defaults

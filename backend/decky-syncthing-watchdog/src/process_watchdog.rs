@@ -22,7 +22,6 @@ const BACKGROUND_WATCH_INTERVAL_SECS: u64 = 30;
 
 lazy_static! {
     static ref WHICH_FLATPAK: Result<PathBuf, ::which::Error> = which("flatpak");
-    static ref WHICH_GAMESCOPE: Result<PathBuf, ::which::Error> = which("gamescope-session");
 }
 
 pub struct ProcessWatchdog {
@@ -181,6 +180,9 @@ impl ProcessWatchdog {
     pub async fn background_watch(slf: Arc<Mutex<Self>>) -> Infallible {
         //      - When autostart is enabled & when gamescope (or this watchdog) was not running but now is: Start
         //      - when gamescope is gone: Stop
+        let mut slf_lock = slf.lock().await;
+        slf_lock.refresh_gamescope_state().ok();
+        drop(slf_lock);
         loop {
             debug!("background loop");
             let mut slf_lock = slf.lock().await;
@@ -238,7 +240,7 @@ impl ProcessWatchdog {
         self.system
             .refresh_processes_specifics(ProcessRefreshKind::default());
         for (pid, process) in self.system.processes() {
-            if Self::process_is_gamescope(process)? {
+            if Self::process_is_gamescope(process) {
                 self.gamescope_pid = Some(*pid);
                 return Ok(Some(process));
             }
@@ -256,11 +258,11 @@ impl ProcessWatchdog {
 
     fn try_gamescope_process_is_running(&mut self) -> Result<bool, WatchdogError> {
         if let Some(pid) = self.gamescope_pid {
-            let proc = Self::try_does_process_exist_and_match_cond(
+            let proc = Self::does_process_exist_and_match_cond(
                 &mut self.system,
                 pid,
                 Self::process_is_gamescope,
-            )?;
+            );
             if proc.is_some() {
                 Ok(true)
             } else {
@@ -321,11 +323,14 @@ impl ProcessWatchdog {
             .unwrap_or_default()
     }
 
-    fn process_is_gamescope(proc: &Process) -> Result<bool, which::Error> {
-        WHICH_GAMESCOPE
-            .as_ref()
-            .map(|gamescope_bin| proc.exe() == gamescope_bin)
-            .map_err(Clone::clone)
+    fn process_is_gamescope(proc: &Process) -> bool {
+        // TODO: Ehhhh this may really easily break. But the gamescope process exe symlink can't be read.
+        for cmd in proc.cmd() {
+            if cmd == "/usr/bin/gamescope-session" {
+                return true;
+            }
+        }
+        false
     }
 }
 
