@@ -28,7 +28,7 @@ const Setting: FunctionComponent<SettingProps> = ({type, label, setting, value, 
             );
         case "bool":
             return (
-                <Field label={label}>
+                <Field label={label} description={description}>
                     <Toggle
                         value={value}
                         onChange={onChangeInner}

@@ -36,6 +36,7 @@ class Settings(TypedDict):
     api_key: str
     basic_auth_user: str
     basic_auth_pass: str
+    keep_running_on_desktop: bool
 
 
 # noinspection PyAttributeOutsideInit
@@ -130,6 +131,7 @@ def default_settings(*, save=False) -> Settings:
         api_key="",
         basic_auth_user="",
         basic_auth_pass="",
+        keep_running_on_desktop=False
     )
     if save:
         with open(SETTINGS_PATH, "w") as f:

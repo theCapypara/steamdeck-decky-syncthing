@@ -33,6 +33,7 @@ pub struct Settings {
     api_key: String,
     pub basic_auth_user: String,
     pub basic_auth_pass: String,
+    pub keep_running_on_desktop: bool,
 }
 
 impl Settings {

@@ -105,6 +105,9 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
                              description="This and the password are needed if you want to enter the web UI and have it password-protected."/>
                     <Setting type="password" label="Basic Auth Password" setting="basic_auth_pass" value={settings?.basic_auth_pass}
                              onChange={onChange}/>
+                    <Setting type="bool" label="Keep running on Desktop" setting="keep_running_on_desktop"
+                             value={settings?.keep_running_on_desktop} onChange={onChange}
+                             description="If enabled, the plugin will try to keep Syncthing running even when switching to Desktop mode. You can then interact with it from Desktop via the Web UI. Do not try to start Syncthing GTK. If however you notice the Web UI does not work, then the plugin failed to keep Syncthing running and you can safely start Syncthing GTK."/>
                 </DialogControlsSection>
             </DialogBody>
         );

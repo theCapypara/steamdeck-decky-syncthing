@@ -198,7 +198,9 @@ impl ProcessWatchdog {
                 }
                 Some(_) => {
                     debug!("Gamescope was running");
-                    if !slf_lock.gamescope_process_is_running() {
+                    if !slf_lock.gamescope_process_is_running()
+                        && !slf_lock.settings.settings().await.keep_running_on_desktop
+                    {
                         debug!("Gamescope is no longer running, stopping");
                         slf_lock.syncthing_stop().await.ok();
                     }
