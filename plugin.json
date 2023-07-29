@@ -5,6 +5,6 @@
   "publish": {
     "tags": ["syncthing", "services", "synchronization", "backup", "cloud", "files"],
     "description": "Plugin for managing Syncthing to synchronize files with other devices. Not officially affiliated with the Syncthing project.",
-    "image": "https://raw.githubusercontent.com/theCapypara/steamdeck-decky-syncthing/main/banner.jpg"
+    "image": "https://raw.githubusercontent.com/theCapypara/steamdeck-decky-syncthing/main/banner.png"
   }
 }
