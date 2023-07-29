@@ -6,7 +6,7 @@ use hyper::client::HttpConnector;
 use hyper::header::AUTHORIZATION;
 use hyper::{Body, Request, Response, Uri};
 use hyper_reverse_proxy::ReverseProxy;
-use hyper_tls::HttpsConnector;
+use hyper_rustls::HttpsConnector;
 use lazy_static::lazy_static;
 use log::warn;
 use std::convert::Infallible;

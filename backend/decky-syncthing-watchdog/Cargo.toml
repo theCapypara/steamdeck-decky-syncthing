@@ -6,8 +6,8 @@ edition = "2021"
 [dependencies]
 sysinfo = "0.29"
 hyper = { version = "0.14", features = ["client", "server", "http1", "http2"] }
-hyper-tls = "0.5"
-tokio-native-tls = "0.3"
+rustls = { version = "0.21", features = ["dangerous_configuration"] }
+hyper-rustls = "0.24"
 hyper-reverse-proxy = { git = "https://github.com/felipenoris/hyper-reverse-proxy.git", rev = "e73a76600ce9e51e962de5266b03be596e6c1d50" }
 tokio = { version = "1.28", features = ["rt", "macros", "fs"] }
 log = "0.4"
