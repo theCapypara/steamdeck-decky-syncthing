@@ -1,5 +1,5 @@
 {
-  "name": "decky-plugin-syncthing",
+  "name": "decky-syncthing",
   "version": "0.1.0",
   "description": "Plugin for managing Syncthing. Not officially affiliated with the Syncthing project.",
   "scripts": {
