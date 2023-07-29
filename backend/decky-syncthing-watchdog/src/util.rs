@@ -20,7 +20,7 @@ where
                 .with_custom_certificate_verifier(Arc::new(AcceptAnyCert))
                 .with_no_client_auth(),
         )
-        .https_only()
+        .https_or_http()
         .enable_http1()
         .build();
     Client::builder().build::<_, B>(https)
