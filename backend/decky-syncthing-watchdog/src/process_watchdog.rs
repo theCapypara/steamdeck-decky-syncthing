@@ -106,7 +106,7 @@ impl ProcessWatchdog {
                 .stderr(Stdio::from(errors))
                 .spawn()?;
             // The pid of the child is the PID of the Flatpak bwrap wrapper. We want the actual PID. So let's do refresh do the trick!
-            sleep(Duration::from_millis(200)).await;
+            sleep(Duration::from_millis(500)).await;
             self.refresh_state().await?;
             self.syncthing_should_be_running = true;
             if self.syncthing_pid.is_none() {
@@ -182,6 +182,10 @@ impl ProcessWatchdog {
         //      - when gamescope is gone: Stop
         let mut slf_lock = slf.lock().await;
         slf_lock.refresh_gamescope_state().ok();
+        if slf_lock.settings.settings().await.autostart && slf_lock.gamescope_process_is_running() {
+            debug!("Initial autostart.");
+            slf_lock.syncthing_start().await.ok();
+        }
         drop(slf_lock);
         loop {
             debug!("background loop");

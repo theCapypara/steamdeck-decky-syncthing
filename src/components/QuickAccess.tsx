@@ -26,7 +26,7 @@ const MAX_TRIES = 150;
 export const QuickAccess: FC<{ serverApi: ServerAPI }> = ({serverApi}) => {
     const [state, setState] = useState<SyncthingProcessState | string>(SyncthingProcessState.Unknown);
     const [settings, setSettings] = useState<Settings | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const reloadState = async (updateLoading = true) => {
