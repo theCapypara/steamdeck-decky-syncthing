@@ -6,7 +6,7 @@ import {
     ServerAPI,
     Spinner
 } from "decky-frontend-lib";
-import {useEffect, useState, VFC} from "react";
+import {useEffect, useState, FC} from "react";
 import WithSuspense from "../../WithSuspense";
 import Setting from "../../Setting";
 import {Settings} from "../../../Settings";
@@ -22,7 +22,7 @@ interface SettingsPageProps {
     serverApi: ServerAPI
 }
 
-export const SettingsPage: VFC<SettingsPageProps> = ({serverApi}) => {
+export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
 
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<Settings | null>(null);
@@ -94,11 +94,16 @@ export const SettingsPage: VFC<SettingsPageProps> = ({serverApi}) => {
                              onChange={onChange}/>
                     <Setting type="int" label="API Key" setting="api_key" value={settings?.api_key}
                              onChange={onChange}
-                             description="Tip: You can start Syncthing from this plugin before entering this key. It will still work, the plugin just won't be able to show you the status of it. Then enter the web interface with the globe icon and copy the API key."/>
+                             description="Tip: You can start Syncthing from this plugin before entering this key. It will still work, the plugin just won't be able to show you the status of it. Then enter the web interface with the globe icon. At the time of writing the Deck does not support copying from web sites, so you may need to write it down."/>
                 </DialogControlsSection>
                 <DialogControlsSection>
                     <DialogControlsSectionHeader>Advanced</DialogControlsSectionHeader>
                     <Setting type="str" label="Flatpak ID" setting="flatpak_name" value={settings?.flatpak_name}
+                             onChange={onChange}/>
+                    <Setting type="str" label="Basic Auth Username" setting="basic_auth_user" value={settings?.basic_auth_user}
+                             onChange={onChange}
+                             description="This and the password are needed if you want to enter the web UI and have it password-protected."/>
+                    <Setting type="password" label="Basic Auth Password" setting="basic_auth_pass" value={settings?.basic_auth_pass}
                              onChange={onChange}/>
                 </DialogControlsSection>
             </DialogBody>

@@ -2,7 +2,7 @@ import {
     ServerAPI,
     SidebarNavigation,
 } from "decky-frontend-lib";
-import {VFC} from "react";
+import {FC} from "react";
 import WithSuspense from "../WithSuspense";
 import {FaClipboardList, FaWrench} from "react-icons/fa";
 import {SettingsPage} from "./pages/SettingsPage";
@@ -12,7 +12,7 @@ interface SettingsRouterProps {
     serverApi: ServerAPI
 }
 
-export const SettingsRouter: VFC<SettingsRouterProps> = ({ serverApi }) => {
+export const SettingsRouter: FC<SettingsRouterProps> = ({ serverApi }) => {
     const pages = [
         {
             title: "Settings",

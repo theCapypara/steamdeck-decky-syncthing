@@ -1,0 +1,32 @@
+.syncthing-identicon {
+    width: 1em;
+    height: 1em;
+    shape-rendering: crispEdges;
+}
+
+.syncthing-identicon rect {
+    fill: currentColor;
+}
+
+.syncthing-entity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.syncthing-entity-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}
+
+.syncthing-entity-label--label {
+    text-align: right;
+}
+
+.syncthing-entity-label--icons {
+    display: inline-flex;
+    padding: 0;
+    gap: 8px;
+}

@@ -1,4 +1,4 @@
-import {VFC} from "react";
+import {FC} from "react";
 import {FaHourglass, FaPlay, FaQuestionCircle, FaSkull, FaSkullCrossbones, FaStop} from "react-icons/fa";
 import {SyncthingProcessState} from "../consts";
 
@@ -7,7 +7,7 @@ interface SyncthingStateProps {
     hasError: boolean;
 }
 
-export const SyncthingState: VFC<SyncthingStateProps> = ({ state, hasError }) => {
+export const SyncthingState: FC<SyncthingStateProps> = ({ state, hasError }) => {
     if (hasError) {
         return <span><FaSkullCrossbones/> Error</span>;
     }

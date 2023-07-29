@@ -31,6 +31,8 @@ pub struct Settings {
     pub flatpak_name: String,
     pub port: u16,
     api_key: String,
+    pub basic_auth_user: String,
+    pub basic_auth_pass: String,
 }
 
 impl Settings {

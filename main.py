@@ -34,6 +34,8 @@ class Settings(TypedDict):
     flatpak_name: str
     port: int
     api_key: str
+    basic_auth_user: str
+    basic_auth_pass: str
 
 
 # noinspection PyAttributeOutsideInit
@@ -126,6 +128,8 @@ def default_settings(*, save=False) -> Settings:
         flatpak_name=DEFAULT_FLATPAK_NAME,
         port=DEFAULT_PORT,
         api_key="",
+        basic_auth_user="",
+        basic_auth_pass="",
     )
     if save:
         with open(SETTINGS_PATH, "w") as f:

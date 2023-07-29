@@ -5,12 +5,14 @@ import replace from '@rollup/plugin-replace';
 import typescript from '@rollup/plugin-typescript';
 import { defineConfig } from 'rollup';
 import importAssets from 'rollup-plugin-import-assets';
+import css from "rollup-plugin-import-css";
 
 import { name } from "./plugin.json";
 
 export default defineConfig({
   input: './src/index.tsx',
   plugins: [
+    css(),
     commonjs(),
     nodeResolve(),
     typescript(),

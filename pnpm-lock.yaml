@@ -1,5 +1,9 @@
 lockfileVersion: '6.0'
 
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
 dependencies:
   decky-frontend-lib:
     specifier: ^3.21.1
@@ -36,6 +40,9 @@ devDependencies:
   rollup-plugin-import-assets:
     specifier: ^1.1.1
     version: 1.1.1(rollup@2.79.1)
+  rollup-plugin-import-css:
+    specifier: ^3.3.1
+    version: 3.3.1(rollup@2.79.1)
   shx:
     specifier: ^0.3.4
     version: 0.3.4
@@ -165,6 +172,21 @@ packages:
     dependencies:
       '@types/estree': 0.0.39
       estree-walker: 1.0.1
+      picomatch: 2.3.1
+      rollup: 2.79.1
+    dev: true
+
+  /@rollup/pluginutils@5.0.2(rollup@2.79.1):
+    resolution: {integrity: sha512-pTd9rIsP92h+B6wWwFbW8RkZv4hiR/xKsqre4SIuAOaOEQRxi0lqLke9k2/7WegC85GgUs9pjmOjCUi3In4vwA==}
+    engines: {node: '>=14.0.0'}
+    peerDependencies:
+      rollup: ^1.20.0||^2.0.0||^3.0.0
+    peerDependenciesMeta:
+      rollup:
+        optional: true
+    dependencies:
+      '@types/estree': 1.0.1
+      estree-walker: 2.0.2
       picomatch: 2.3.1
       rollup: 2.79.1
     dev: true
@@ -728,6 +750,16 @@ packages:
       url-join: 4.0.1
     dev: true
 
+  /rollup-plugin-import-css@3.3.1(rollup@2.79.1):
+    resolution: {integrity: sha512-/v/OjjDPhhhbua5w4VzHRTtqfyyG950jJSObtM9os5ELGgaHiolNOvpZNk2KeTSFMuhdrXirGXM64bluHgwySA==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      rollup: ^2.x.x || ^3.x.x
+    dependencies:
+      '@rollup/pluginutils': 5.0.2(rollup@2.79.1)
+      rollup: 2.79.1
+    dev: true
+
   /rollup-pluginutils@2.8.2:
     resolution: {integrity: sha512-EEp9NhnUkwY8aif6bxgovPHMoMoNr2FulJziTndpt5H9RdwC47GSGuII9XxpSdzVGM0GWrNPHV6ie1LTNJPaLQ==}
     dependencies:
@@ -936,7 +968,3 @@ packages:
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
-
-settings:
-  autoInstallPeers: true
-  excludeLinksFromLockfile: false

@@ -12,7 +12,7 @@ use crate::process_watchdog::ProcessWatchdog;
 use crate::proxy::handle_proxy;
 use crate::settings::SettingsProvider;
 use crate::state::State;
-use hyper::header::ACCESS_CONTROL_ALLOW_ORIGIN;
+use hyper::header::{ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN};
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
@@ -104,9 +104,12 @@ where
         Some(v) => v,
         None => handle_proxy(client_ip, req, &settings, &state).await,
     }?;
-    response
-        .headers_mut()
-        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+    // XXX: since we are only ever listening on localhost and are pretty niche,
+    //      this is probably fine enough, but really
+    //      we should eventually make this more strict.
+    let headers_mut = response.headers_mut();
+    headers_mut.insert(ACCESS_CONTROL_ALLOW_ORIGIN, "*".parse().unwrap());
+    headers_mut.insert(ACCESS_CONTROL_ALLOW_HEADERS, "*".parse().unwrap());
     Ok(response)
 }
 

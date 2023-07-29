@@ -9,7 +9,7 @@ import {
     ServerAPI,
     showModal,
 } from "decky-frontend-lib";
-import {useCallback, useEffect, useState, VFC} from "react";
+import {useCallback, useEffect, useState, FC} from "react";
 import WithSuspense from "../../WithSuspense";
 import {FaSync} from "react-icons/fa";
 import {Scrollable} from "../../Scrollable";
@@ -20,7 +20,7 @@ interface LogsPageProps {
     serverApi: ServerAPI
 }
 
-export const LogsPage: VFC<LogsPageProps> = ({serverApi}) => {
+export const LogsPage: FC<LogsPageProps> = ({serverApi}) => {
     const [state, setState] = useState<string>(SyncthingProcessState.Unknown);
 
     const reloadState = async () => {
@@ -65,7 +65,7 @@ interface LogModalProps {
     closeModal?: () => {}
 }
 
-const LogModal: VFC<LogModalProps> = ({state, serverApi, closeModal}) => {
+const LogModal: FC<LogModalProps> = ({state, serverApi, closeModal}) => {
     const [log, setLog] = useState("Loading...");
 
     useEffect(() => {

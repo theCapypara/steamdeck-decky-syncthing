@@ -3,9 +3,9 @@ import {
     ServerAPI,
     staticClasses,
 } from "decky-frontend-lib";
-import {FaSyncAlt} from "react-icons/fa";
 import {SettingsRouter} from "./components/settings/SettingsRouter";
-import {Context} from "./components/Context";
+import {QuickAccess} from "./components/QuickAccess";
+import {SyncthingIcon} from "./components/SyncthingIcon";
 
 export default definePlugin((serverApi: ServerAPI) => {
     console.info(`Decky Syncthing: loading`);
@@ -18,8 +18,8 @@ export default definePlugin((serverApi: ServerAPI) => {
 
     return {
         title: <div className={staticClasses.Title}>Syncthing</div>,
-        content: <Context serverApi={serverApi}/>,
-        icon: <FaSyncAlt/>,
+        content: <QuickAccess serverApi={serverApi}/>,
+        icon: <SyncthingIcon/>,
         onDismount() {
             serverApi.routerHook.removeRoute("/decky-syncthing/settings");
         },

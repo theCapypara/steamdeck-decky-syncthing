@@ -1,4 +1,4 @@
-import {useEffect, useState, VFC} from "react";
+import {useEffect, useState, FC} from "react";
 import {
     DialogButton,
     Field,
@@ -9,7 +9,6 @@ import {
     Router,
     ServerAPI,
     sleep,
-    SteamSpinner
 } from "decky-frontend-lib";
 import {FaGlobe, FaPowerOff, FaSyncAlt, FaWrench} from "react-icons/fa";
 import {SyncthingState} from "./SyncthingState";
@@ -18,10 +17,13 @@ import {FolderPanel} from "./FolderPanel";
 import {DevicesPanel} from "./DevicesPanel";
 import {PLUGIN_API_GET_SETTINGS_JSON, SyncthingProcessState, WATCHDOG_PROXY_URL} from "../consts";
 import {WatchdogApi} from "../api/WatchdogApi";
+import {SyncthingApi} from "../api/SyncthingApi";
+import {Loader} from "./Loader";
+import style from "../style.css";
 
 const MAX_TRIES = 150;
 
-export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
+export const QuickAccess: FC<{ serverApi: ServerAPI }> = ({serverApi}) => {
     const [state, setState] = useState<SyncthingProcessState | string>(SyncthingProcessState.Unknown);
     const [settings, setSettings] = useState<Settings | null>(null);
     const [loading, setLoading] = useState(true);
@@ -58,7 +60,7 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
         return state;
     };
 
-    const toggleSyncthing = async() => {
+    const toggleSyncthing = async () => {
         console.error(`Decky Syncthing: toggling`);
         if (!loading) {
             setLoading(true);
@@ -106,34 +108,30 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
 
     if (loading) {
         return (
-            <Focusable
-                style={{
-                    overflowY: 'scroll',
-                    backgroundColor: 'transparent',
-                    marginTop: '40px',
-                    height: 'calc( 100% - 40px )',
-                }}
-            >
-                <SteamSpinner/>
-            </Focusable>
+            <Loader fullScreen={true}/>
         )
     }
 
+    let api: SyncthingApi | null = null;
+    if (settings != null) {
+        api = new SyncthingApi(settings.api_key);
+    }
 
     return (
         <>
+            <style>{style}</style>
             <PanelSection>
                 <PanelSectionRow>
                     <Focusable flow-children="horizontal"
                                style={{display: "flex", padding: 0, gap: "8px"}}>
                         <DialogButton
-                            style={{minWidth: 0, width: "15%", height: "32px", padding: 0}}
+                            style={{minWidth: 0, width: "15%", height: "28px", padding: "6px"}}
                             onClick={() => reloadState()}
                         >
                             <FaSyncAlt/>
                         </DialogButton>
                         <DialogButton
-                            style={{minWidth: 0, width: "15%", height: "32px", padding: 0}}
+                            style={{minWidth: 0, width: "15%", height: "28px", padding: "6px"}}
                             onClick={() => {
                                 Router.CloseSideMenus();
                                 Router.Navigate("/decky-syncthing/settings");
@@ -142,7 +140,7 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
                             <FaWrench/>
                         </DialogButton>
                         <DialogButton
-                            style={{minWidth: 0, width: "15%", height: "32px", padding: 0}}
+                            style={{minWidth: 0, width: "15%", height: "28px", padding: "6px"}}
                             onClick={() => {
                                 Router.CloseSideMenus();
                                 console.info(`Decky Syncthing: opening ${WATCHDOG_PROXY_URL}`);
@@ -152,7 +150,7 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
                             <FaGlobe/>
                         </DialogButton>
                         <DialogButton
-                            style={{minWidth: 0, width: "15%", height: "32px", padding: 0}}
+                            style={{minWidth: 0, width: "15%", height: "28px", padding: "6px"}}
                             onClick={() => toggleSyncthing()}
                         >
                             <FaPowerOff/>
@@ -172,17 +170,14 @@ export const Context: VFC<{ serverApi: ServerAPI }> = ({serverApi}) => {
                     </PanelSection>
                 </>
             )}
-            {state == SyncthingProcessState.Running && settings != null && (
+            {state == SyncthingProcessState.Running && api != null && (
                 <>
-                    <PanelSection title="Folder">
-                        <PanelSectionRow>
-                            <FolderPanel port={settings.port} apiKey={settings.api_key}/>
-                        </PanelSectionRow>
+
+                    <PanelSection title="Folders">
+                        <FolderPanel api={api}/>
                     </PanelSection>
                     <PanelSection title="Devices">
-                        <PanelSectionRow>
-                            <DevicesPanel port={settings.port} apiKey={settings.api_key}/>
-                        </PanelSectionRow>
+                        <DevicesPanel api={api}/>
                     </PanelSection>
                 </>
             )}
