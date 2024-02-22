@@ -45,20 +45,15 @@ impl Settings {
 
 pub struct SettingsProvider {
     settings_path: PathBuf,
-    syncthing_log_path: PathBuf,
     current_settings: RwLock<Settings>,
     backend_uri_cache: RwLock<Option<(Scheme, String)>>,
 }
 
 impl SettingsProvider {
-    pub async fn new(
-        settings_path: PathBuf,
-        syncthing_log_path: PathBuf,
-    ) -> Result<Arc<Self>, SettingsError> {
+    pub async fn new(settings_path: PathBuf) -> Result<Arc<Self>, SettingsError> {
         let current_settings = RwLock::new(Settings::new(&settings_path).await?);
         Ok(Arc::new(Self {
             settings_path,
-            syncthing_log_path,
             current_settings,
             backend_uri_cache: RwLock::default(),
         }))
@@ -122,10 +117,6 @@ impl SettingsProvider {
         *cs_lock = Settings::new(&self.settings_path).await?;
         *buc_lock = None;
         Ok(())
-    }
-
-    pub fn syncthing_log_path(&self) -> &Path {
-        &self.syncthing_log_path
     }
 
     pub async fn settings(&self) -> impl Deref<Target = Settings> + '_ {

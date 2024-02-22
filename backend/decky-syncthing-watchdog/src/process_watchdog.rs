@@ -3,10 +3,9 @@ use errno::errno;
 use lazy_static::lazy_static;
 use log::{debug, error, info};
 use std::convert::Infallible;
-use std::fs::File;
 use std::io;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use sysinfo::{
@@ -92,18 +91,13 @@ impl ProcessWatchdog {
         self.refresh_state().await?;
         if !matches!(self.syncthing_state().await?, SyncthingState::Running) {
             self.wait_timer = Some(Instant::now() + Duration::from_secs(15));
-            let logfile_path = self.settings.syncthing_log_path();
             let flatpak_bin = WHICH_FLATPAK.as_ref().map_err(Clone::clone)?;
-            let outputs = File::create(logfile_path)?;
-            let errors = outputs.try_clone()?;
             info!("Starting Syncthing");
             Command::new(flatpak_bin)
                 .arg("run")
                 .arg("--command=syncthing")
                 .arg(self.settings.settings().await.flatpak_name.clone())
                 .arg("--no-browser")
-                .stdout(Stdio::from(outputs))
-                .stderr(Stdio::from(errors))
                 .spawn()?;
             // The pid of the child is the PID of the Flatpak bwrap wrapper. We want the actual PID. So let's do refresh do the trick!
             sleep(Duration::from_millis(500)).await;

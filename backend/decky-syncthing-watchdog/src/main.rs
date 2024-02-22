@@ -33,9 +33,9 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process;
 use std::process::ExitCode;
-use std::thread::sleep;
 use std::time::Duration;
 use sysinfo::{Pid, PidExt, ProcessExt, System, SystemExt};
+use tokio::time::sleep;
 
 const LOGFILE_WATCHDOG_ROLLING: &str = "watchdog.{}.log";
 const LOGFILE_WATCHDOG: &str = "watchdog.log";
@@ -46,8 +46,7 @@ async fn main() -> ExitCode {
     let mut args_iter = args();
     let settings_path = PathBuf::from(args_iter.nth(1).unwrap());
     let watchdog_pid_path = PathBuf::from(args_iter.next().unwrap());
-    let syncthing_log_path = PathBuf::from(args_iter.next().unwrap());
-    let watchdog_log_dir_path = syncthing_log_path.parent().unwrap();
+    let watchdog_log_dir_path = PathBuf::from(args_iter.next().unwrap());
 
     if other_process_already_running(&watchdog_pid_path) {
         return ExitCode::SUCCESS;
@@ -55,18 +54,16 @@ async fn main() -> ExitCode {
 
     update_pid_file(&watchdog_pid_path);
     // To avoid race conditions on start, we check again.
-    sleep(Duration::from_millis(50));
+    sleep(Duration::from_millis(50)).await;
     if other_process_already_running(&watchdog_pid_path) {
         return ExitCode::SUCCESS;
     }
 
-    setup_self_logging(watchdog_log_dir_path);
-    register_panic_hook(watchdog_log_dir_path);
+    setup_self_logging(&watchdog_log_dir_path);
+    register_panic_hook(&watchdog_log_dir_path);
     info!("started.");
 
-    let settings = SettingsProvider::new(settings_path, syncthing_log_path)
-        .await
-        .unwrap();
+    let settings = SettingsProvider::new(settings_path).await.unwrap();
     let watchdog = ProcessWatchdog::new(settings.clone());
     let state = State::new(watchdog.clone());
 
