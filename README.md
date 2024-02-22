@@ -16,5 +16,4 @@ The plugin works no matter if you have HTTPS enabled or not and also no matter i
 There is a background process `decky-syncthing-watchdog` started by this plugin, which runs all the time if Gamescope
 and the plugin is active and acts as a backend for controlling the main Syncthing service and.
 Since the Steam Deck UI has no support for self-signed HTTPS certificates or Basic Auth, it also acts as a
-proxy server on port 58384 (HTTP, localhost only) that forwards requests to the Syncthing Web UI and API. This
-service stops itself when Gamescope is exited.
+proxy server on port 58384 (HTTP, localhost only) that forwards requests to the Syncthing Web UI and API.
