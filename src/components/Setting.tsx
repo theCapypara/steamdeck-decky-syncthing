@@ -21,6 +21,8 @@ const Setting: FunctionComponent<SettingProps> = ({type, label, setting, value, 
                     <TextField
                         value={value}
                         bIsPassword={true}
+                        // @ts-ignore
+                        type={"password"}
                         onChange={onChangeTextFieldInner}
                         description={description}
                     />
