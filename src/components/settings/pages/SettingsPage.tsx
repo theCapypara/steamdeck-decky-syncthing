@@ -12,6 +12,7 @@ import Setting from "../../Setting";
 import {Settings} from "../../../Settings";
 import {PLUGIN_API_GET_SETTINGS_JSON, PLUGIN_API_SET_SETTING} from "../../../consts";
 import {WatchdogApi} from "../../../api/WatchdogApi";
+import SettingDropdown from "../../SettingDropdown";
 
 interface SetSettingParams {
     setting: string;
@@ -84,27 +85,52 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
             </DialogBody>
         );
     } else {
+        let modeSettings;
+        if (settings?.mode === "systemd") {
+            modeSettings = (
+                <DialogControlsSection>
+                    <DialogControlsSectionHeader>Service Settings</DialogControlsSectionHeader>
+                    <Setting type="str" label="Systemd service name" setting="service_name" value={settings?.service_name}
+                             onChange={onChange}/>
+                </DialogControlsSection>
+            );
+        } else {
+            modeSettings = (
+                <DialogControlsSection>
+                    <DialogControlsSectionHeader>Flatpak Settings</DialogControlsSectionHeader>
+                    <Setting type="str" label="Flatpak ID" setting="flatpak_name" value={settings?.flatpak_name}
+                             onChange={onChange}/>
+                    <Setting type="str" label="Syncthing binary" setting="flatpak_binary" value={settings?.flatpak_binary}
+                             onChange={onChange}/>
+                </DialogControlsSection>
+            );
+        }
+
         content = (
             <DialogBody>
                 <DialogControlsSection>
-                    <DialogControlsSectionHeader>General</DialogControlsSectionHeader>
-                    <Setting type="bool" label="Start Syncthing automatically" setting="autostart"
-                             value={settings?.autostart} onChange={onChange}/>
+                    <DialogControlsSectionHeader>Mode</DialogControlsSectionHeader>
+                    <SettingDropdown label="Launch Mode" options={{"flatpak": "Flatpak", "systemd": "Existing Systemd service"}}
+                                     setting="mode" value={settings?.mode} onChange={onChange}/>
+                </DialogControlsSection>
+                {modeSettings}
+                <DialogControlsSection>
+                    <DialogControlsSectionHeader>Connection</DialogControlsSectionHeader>
                     <Setting type="int" label="Syncthing Port" setting="port" value={settings?.port}
                              onChange={onChange}/>
                     <Setting type="int" label="API Key" setting="api_key" value={settings?.api_key}
                              onChange={onChange}
                              description="Tip: You can start Syncthing from this plugin before entering this key. It will still work, the plugin just won't be able to show you the status of it. Then enter the web interface with the globe icon. At the time of writing the Deck does not support copying from web sites, so you may need to write it down."/>
-                </DialogControlsSection>
-                <DialogControlsSection>
-                    <DialogControlsSectionHeader>Advanced</DialogControlsSectionHeader>
-                    <Setting type="str" label="Flatpak ID" setting="flatpak_name" value={settings?.flatpak_name}
-                             onChange={onChange}/>
                     <Setting type="str" label="Basic Auth Username" setting="basic_auth_user" value={settings?.basic_auth_user}
                              onChange={onChange}
                              description="This and the password are needed if you want to enter the web UI and have it password-protected."/>
                     <Setting type="password" label="Basic Auth Password" setting="basic_auth_pass" value={settings?.basic_auth_pass}
                              onChange={onChange}/>
+                </DialogControlsSection>
+                <DialogControlsSection>
+                    <DialogControlsSectionHeader>Start / Stop</DialogControlsSectionHeader>
+                    <SettingDropdown label="Autostart" options={{"no": "Disabled", "boot": "At boot", "gamescope": "When in Game Mode"}}
+                                     setting="autostart" value={settings?.autostart} onChange={onChange}/>
                     <Setting type="bool" label="Keep running on Desktop" setting="keep_running_on_desktop"
                              value={settings?.keep_running_on_desktop} onChange={onChange}
                              description="If enabled, the plugin will try to keep Syncthing running even when switching to Desktop mode. You can then interact with it from Desktop via the Web UI. Do not try to start Syncthing GTK. If however you notice the Web UI does not work, then the plugin failed to keep Syncthing running and you can safely start Syncthing GTK."/>

@@ -62,6 +62,11 @@ class Plugin:
     async def get_settings_json(self) -> str:
         return json.dumps(self.settings)
 
+    async def restart_watchdog(self):
+        reset_all_processes()
+        await asyncio.sleep(2)
+        start_watchdog()
+
     async def set_setting(self, setting: str, value: any):
         if setting not in self.settings:
             logger.error(f"Unknown setting: {setting}")
@@ -98,6 +103,10 @@ def start_watchdog():
     if it finds out it's already running (it checks the PID file and sees if that process is alive).
     """
     logger.info("Watchdog starting...")
+    env = dict(os.environ)
+    # On the real Deck the session bus variable may not be set. This is not bulletproof, but what can you do:
+    if "DBUS_SESSION_BUS_ADDRESS" not in env:
+        env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path=/run/user/{os.getuid()}/bus"
     subprocess.Popen(
         [
             WATCHDOG_BIN_PATH,
@@ -105,7 +114,7 @@ def start_watchdog():
             WATCHDOG_PID_PATH,
             DECKY_PLUGIN_LOG_DIR,
         ],
-        env=dict(os.environ),
+        env=env,
         # do not attach to this process.
         start_new_session=True,
     )
@@ -153,7 +162,7 @@ def default_settings(*, save=False) -> SettingsV2:
 
 
 def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
-    return SettingsV2(
+    settings = SettingsV2(
         config_version=2,
         mode="flatpak",
         service_name="",
@@ -166,4 +175,22 @@ def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
         basic_auth_user=old["basic_auth_user"],
         basic_auth_pass=old["basic_auth_pass"],
         is_setup="migratingV2"
+    )
+
+    reset_all_processes()
+    with open(SETTINGS_PATH, "w") as f:
+        json.dump(settings, f)
+    return settings
+
+
+def reset_all_processes():
+    # Force exit all Syncthing related processes. This will also exit the (old) watchdog.
+    subprocess.Popen(
+        [
+            "/usr/bin/killall",
+            '-r',
+            '.*syncthing.*'
+        ],
+        env=dict(os.environ),
+        start_new_session=True,
     )
