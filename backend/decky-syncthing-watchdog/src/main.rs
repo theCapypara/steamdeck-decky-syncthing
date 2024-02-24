@@ -1,22 +1,22 @@
 mod api;
 mod panic_util;
-mod process_watchdog;
 mod proxy;
+mod service;
 mod settings;
-mod state;
 mod util;
+mod watch_gamescope;
 
 use crate::api::handle_api;
 use crate::panic_util::register_panic_hook;
-use crate::process_watchdog::ProcessWatchdog;
 use crate::proxy::handle_proxy;
+use crate::service::init_service;
 use crate::settings::SettingsProvider;
-use crate::state::State;
+use crate::watch_gamescope::GamescopeWatchdog;
 use hyper::header::{ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN};
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use log::{error, info, LevelFilter};
+use log::{debug, error, info, LevelFilter};
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
 use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
@@ -49,37 +49,40 @@ async fn main() -> ExitCode {
     let watchdog_log_dir_path = PathBuf::from(args_iter.next().unwrap());
 
     if other_process_already_running(&watchdog_pid_path) {
+        debug!("other watchdog was already running. Not starting.");
         return ExitCode::SUCCESS;
     }
 
     update_pid_file(&watchdog_pid_path);
     // To avoid race conditions on start, we check again.
-    sleep(Duration::from_millis(50)).await;
+    sleep(Duration::from_millis(150)).await;
     if other_process_already_running(&watchdog_pid_path) {
+        debug!("other watchdog was already running. Not starting.");
         return ExitCode::SUCCESS;
     }
 
     setup_self_logging(&watchdog_log_dir_path);
     register_panic_hook(&watchdog_log_dir_path);
-    info!("started.");
+    info!("started {}.", env!("CARGO_PKG_VERSION"));
+    debug!("debug logging enabled.");
 
     let settings = SettingsProvider::new(settings_path).await.unwrap();
-    let watchdog = ProcessWatchdog::new(settings.clone());
-    let state = State::new(watchdog.clone());
+
+    let mut gamescope_watchdog = GamescopeWatchdog::new(settings.clone());
+    init_service(&*settings.settings().await).await.unwrap();
 
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let settings = settings.clone();
-        let state = state.clone();
         let remote_addr = conn.remote_addr().ip();
         async move {
             Ok::<_, Infallible>(service_fn(move |req| {
-                handle(remote_addr, req, settings.clone(), state.clone())
+                handle(remote_addr, req, settings.clone())
             }))
         }
     });
 
     let server = Server::bind(&BIND_ADDR.parse().unwrap()).serve(make_svc);
-    let watcher = ProcessWatchdog::background_watch(watchdog.clone());
+    let watcher = gamescope_watchdog.background_watch();
 
     let (r1, r2) = tokio::join!(server, watcher);
 
@@ -87,20 +90,21 @@ async fn main() -> ExitCode {
     ExitCode::FAILURE
 }
 
-async fn handle<SP, ST>(
+async fn handle<S>(
     client_ip: IpAddr,
     req: Request<Body>,
-    settings: SP,
-    state: ST,
+    settings: S,
 ) -> Result<Response<Body>, Infallible>
 where
-    SP: Deref<Target = SettingsProvider>,
-    ST: Deref<Target = State>,
+    S: Deref<Target = SettingsProvider>,
 {
-    let mut response = match handle_api(&client_ip, &req, &settings, &state).await {
+    debug!("incoming request");
+    let response_result = match handle_api(&client_ip, &req, &settings).await {
         Some(v) => v,
-        None => handle_proxy(client_ip, req, &settings, &state).await,
-    }?;
+        None => handle_proxy(client_ip, req, &settings).await,
+    };
+    debug!("request handled");
+    let mut response = response_result?;
     // XXX: since we are only ever listening on localhost and are pretty niche,
     //      this is probably fine enough, but really
     //      we should eventually make this more strict.
@@ -129,14 +133,13 @@ fn other_process_already_running(pid_file_path: &Path) -> bool {
         let mut system = System::new();
         let pid_in_file_as_pid = Pid::from_u32(pid_in_file);
 
-        ProcessWatchdog::does_process_exist_and_match_cond(
+        GamescopeWatchdog::does_process_exist_and_match_cond(
             &mut system,
             pid_in_file_as_pid,
             |proc| {
                 // we check if the process matches the binary name, it could be it's just another
                 // unrelated process after restart.
                 proc.exe()
-                    .as_os_str()
                     .to_string_lossy()
                     .contains(env!("CARGO_BIN_NAME"))
             },
@@ -161,7 +164,7 @@ fn setup_self_logging(dir: &Path) {
             window_size,
         )
         .unwrap();
-    let size_limit = 5 * 1024; // 5KB as max log file size to roll
+    let size_limit = 512 * 1024; // 512KB as max log file size to roll
     let size_trigger = SizeTrigger::new(size_limit);
     let compound_policy =
         CompoundPolicy::new(Box::new(size_trigger), Box::new(fixed_window_roller));

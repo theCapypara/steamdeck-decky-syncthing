@@ -1,6 +1,6 @@
 [package]
 name = "decky-syncthing-watchdog"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 [dependencies]
@@ -9,15 +9,14 @@ hyper = { version = "0.14", features = ["client", "server", "http1", "http2"] }
 rustls = { version = "0.21", features = ["dangerous_configuration"] }
 hyper-rustls = "0.24"
 hyper-reverse-proxy = { git = "https://github.com/felipenoris/hyper-reverse-proxy.git", rev = "e73a76600ce9e51e962de5266b03be596e6c1d50" }
-tokio = { version = "1.28", features = ["rt", "macros", "fs"] }
+tokio = { version = "1.36", features = ["rt", "macros", "fs", "process"] }
 log = "0.4"
 log4rs = "1.2"
 lazy_static = "1.4"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
-which = "4.4"
-libc = "0.2"
-errno = "0.3"
 backtrace = "0.3"
 base64 = "0.21"
+homedir = "0.2"
+which = "6.0"

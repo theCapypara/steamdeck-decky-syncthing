@@ -21,24 +21,64 @@ pub enum SettingsError {
     BackendOffline,
     #[error("Error during an HTTP request: {0}")]
     Hyper(#[from] hyper::http::Error),
+    #[error("Unsupported config version. Is: {0}, Need: {1}")]
+    UnsupportedVersion(u32, u32),
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum Mode {
+    Systemd,
+    Flatpak,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum Autostart {
+    No,
+    Boot,
+    Gamescope,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
+#[serde(untagged)]
+pub enum IsSetup {
+    Bool(bool),
+    Other(String),
 }
 
 #[derive(Debug, Deserialize)]
 #[allow(unused)]
+// v2
 pub struct Settings {
     config_version: u32,
-    pub autostart: bool,
+    pub mode: Mode,
+    // Mode: systemd
+    pub service_name: String,
+    // Mode: flatpak
     pub flatpak_name: String,
+    pub flatpak_binary: String,
+    // General:
+    pub autostart: Autostart,
+    pub keep_running_on_desktop: bool,
     pub port: u16,
     api_key: String,
     pub basic_auth_user: String,
     pub basic_auth_pass: String,
-    pub keep_running_on_desktop: bool,
+    is_setup: IsSetup,
 }
 
 impl Settings {
+    pub const SUPPORTED_VERSION: u32 = 2;
+
     async fn new(path: &Path) -> Result<Self, SettingsError> {
         let slf: Self = serde_json::from_str(&read_to_string(path).await?)?;
+        if slf.config_version != Self::SUPPORTED_VERSION {
+            return Err(SettingsError::UnsupportedVersion(
+                slf.config_version,
+                Self::SUPPORTED_VERSION,
+            ));
+        }
         Ok(slf)
     }
 }

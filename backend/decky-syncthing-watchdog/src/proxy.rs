@@ -1,5 +1,5 @@
+use crate::service::last_start_ago;
 use crate::settings::SettingsProvider;
-use crate::state::State;
 use crate::util::make_unsafe_https_client;
 use base64::Engine;
 use hyper::client::HttpConnector;
@@ -13,6 +13,7 @@ use std::convert::Infallible;
 use std::fmt::Debug;
 use std::mem::take;
 use std::net::IpAddr;
+use std::time::Duration;
 
 const RESPONSE_BAD_GATEWAY: &str =
     "<html><body><h1>Bad Gateway</h1><p>Is Syncthing running?</p></body></html>";
@@ -27,7 +28,6 @@ pub async fn handle_proxy(
     client_ip: IpAddr,
     mut req: Request<Body>,
     settings: &SettingsProvider,
-    state: &State,
 ) -> Result<Response<Body>, Infallible> {
     let settings_lock = settings.settings().await;
     let port = settings_lock.port;
@@ -59,15 +59,15 @@ pub async fn handle_proxy(
             }
             match REVERSE_CLIENT.call(client_ip, &backend_uri, req).await {
                 Ok(response) => Ok(response),
-                Err(err) => handle_proxy_error(err, state).await,
+                Err(err) => handle_proxy_error(err).await,
             }
         }
-        Err(err) => handle_proxy_error(err, state).await,
+        Err(err) => handle_proxy_error(err).await,
     }
 }
 
-async fn handle_proxy_error(err: impl Debug, state: &State) -> Result<Response<Body>, Infallible> {
-    let (status, body) = if state.wait().await {
+async fn handle_proxy_error(err: impl Debug) -> Result<Response<Body>, Infallible> {
+    let (status, body) = if last_start_ago().await < Duration::from_secs(30) {
         (425, Body::from(RESPONSE_TOO_EARLY))
     } else {
         warn!("Proxy failed: {err:?}");
