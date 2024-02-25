@@ -71,6 +71,13 @@ class Plugin:
         if setting not in self.settings:
             logger.error(f"Unknown setting: {setting}")
             raise KeyError(f"Unknown setting: {setting}")
+        # Sometimes the frontend lib doesn't properly convert the data types, make sure it's correct
+        if setting == "port":
+            value = int(value)
+        if value == "true":
+            value = True
+        if value == "false":
+            value = False
         self.settings[setting] = value  # type: ignore
         with open(SETTINGS_PATH, "w") as f:
             json.dump(self.settings, f)
