@@ -5,7 +5,7 @@
 use crate::settings::{Autostart, Mode, Settings};
 use homedir::get_my_home;
 use lazy_static::lazy_static;
-use log::debug;
+use log::{debug, info};
 use std::io;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -13,6 +13,8 @@ use tokio::fs;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
 use which::which;
+
+pub use systemctl::State as SyncthingState;
 
 lazy_static! {
     static ref LAST_START: Mutex<Option<Instant>> = Mutex::new(None);
@@ -49,6 +51,10 @@ impl<'a> ServiceType<'a> {
 }
 
 pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
+    if settings.is_not_setup() {
+        info!("Skipping service setup: Configuration not setup.");
+        return Ok(());
+    }
     debug!("Init service");
     let service_type = ServiceType::get_for(settings);
     let managed_service_name = ServiceType::Managed.systemd_unit();
@@ -104,16 +110,16 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
     Ok(())
 }
 
-pub async fn get_state(settings: &Settings) -> Result<&'static str, ServiceError> {
+pub async fn get_state(settings: &Settings) -> Result<SyncthingState, ServiceError> {
     debug!("get_state");
-    Ok(
-        systemctl::state(ServiceType::get_for(settings).systemd_unit())
-            .await?
-            .as_static_str(),
-    )
+    systemctl::state(ServiceType::get_for(settings).systemd_unit()).await
 }
 
 pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
+    if settings.is_not_setup() {
+        info!("Skipping service start: Configuration not setup.");
+        return Ok(());
+    }
     debug!("start_service");
     let r = systemctl::start(ServiceType::get_for(settings).systemd_unit()).await;
     if r.is_ok() {
@@ -123,6 +129,10 @@ pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
 }
 
 pub async fn stop_service(settings: &Settings) -> Result<(), ServiceError> {
+    if settings.is_not_setup() {
+        info!("Skipping service stop: Configuration not setup.");
+        return Ok(());
+    }
     debug!("stop_service");
     systemctl::stop(ServiceType::get_for(settings).systemd_unit()).await
 }

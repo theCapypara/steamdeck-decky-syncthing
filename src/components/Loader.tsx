@@ -1,5 +1,5 @@
 import {FC} from "react";
-import {Focusable, ProgressBarItem, SteamSpinner} from "decky-frontend-lib";
+import {Focusable, ProgressBarItem, Spinner} from "decky-frontend-lib";
 
 interface LoaderProps {
     fullScreen?: boolean;
@@ -16,9 +16,11 @@ export const Loader: FC<LoaderProps> = ({ fullScreen = false }) => {
                     height: 'calc( 100% - 40px )',
                 }}
             >
-                <SteamSpinner/>
+                <div style={{"width": 36, "margin": "auto"}}>
+                    <Spinner/>
+                </div>
             </Focusable>
-        );
+    );
     }
 
     return (

@@ -1,6 +1,6 @@
 use crate::service::{start_service, stop_service};
 use crate::settings::{Autostart, SettingsProvider};
-use log::debug;
+use log::{debug, info};
 use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
@@ -38,27 +38,34 @@ impl GamescopeWatchdog {
             settings_arc.settings().await.autostart,
             Autostart::Gamescope
         );
-        if autostart && self.gamescope_process_is_running() {
+        if settings_arc.settings().await.is_not_setup()
+            && autostart
+            && self.gamescope_process_is_running()
+        {
             debug!("Initial autostart.");
             start_service(&*settings_arc.settings().await).await.ok();
         }
         loop {
             debug!("background loop");
-            match self.gamescope_pid {
-                None => {
-                    debug!("Gamescope was not running");
-                    if autostart && self.gamescope_process_is_running() {
-                        debug!("Gamescope is now running, starting");
-                        start_service(&*settings_arc.settings().await).await.ok();
+            if settings_arc.settings().await.is_not_setup() {
+                info!("Skipping Gamescope check: Configuration not setup.");
+            } else {
+                match self.gamescope_pid {
+                    None => {
+                        debug!("Gamescope was not running");
+                        if autostart && self.gamescope_process_is_running() {
+                            debug!("Gamescope is now running, starting");
+                            start_service(&*settings_arc.settings().await).await.ok();
+                        }
                     }
-                }
-                Some(_) => {
-                    debug!("Gamescope was running");
-                    if !self.gamescope_process_is_running()
-                        && !settings_arc.settings().await.keep_running_on_desktop
-                    {
-                        debug!("Gamescope is no longer running, stopping");
-                        stop_service(&*settings_arc.settings().await).await.ok();
+                    Some(_) => {
+                        debug!("Gamescope was running");
+                        if !self.gamescope_process_is_running()
+                            && !settings_arc.settings().await.keep_running_on_desktop
+                        {
+                            debug!("Gamescope is no longer running, stopping");
+                            stop_service(&*settings_arc.settings().await).await.ok();
+                        }
                     }
                 }
             }

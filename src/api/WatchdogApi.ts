@@ -1,10 +1,38 @@
 import {
     SyncthingProcessState,
+    WATCHDOG_CHECK_SCAN_API_KEY_ROUTE,
+    WATCHDOG_CHECK_SCAN_BASIC_AUTH_ROUTE,
+    WATCHDOG_CHECK_SCAN_PORT_ROUTE,
+    WATCHDOG_CHECK_START_ROUTE,
     WATCHDOG_PROXY_URL,
-    WATCHDOG_RELOAD_CONFIG_ROUTE, WATCHDOG_START_ROUTE,
-    WATCHDOG_STATE_ROUTE, WATCHDOG_STOP_ROUTE
+    WATCHDOG_RELOAD_CONFIG_ROUTE,
+    WATCHDOG_START_ROUTE,
+    WATCHDOG_STATE_ROUTE,
+    WATCHDOG_STOP_ROUTE
 } from "../consts";
 import {sleep} from "decky-frontend-lib";
+
+export interface CheckError {
+    error: string;
+}
+
+export interface CheckStart {
+    success: boolean;
+    error?: string;
+    error_details?: string;
+}
+
+export interface CheckScanPort {
+    port?: number;
+}
+
+export interface CheckScanApikey {
+    api_key?: string;
+}
+
+export interface CheckScanBasicAuth {
+    basic_auth_user?: string;
+}
 
 export class WatchdogApi {
     private readonly baseUrl: string;
@@ -57,6 +85,38 @@ export class WatchdogApi {
         if (!result.ok) {
             throw new Error(`Stop request failed. Status: ${result.status} ${result.statusText}. Response: ${await result.text()}`);
         }
+    }
+
+    async checkStart(): Promise<CheckStart | CheckError> {
+        let result = await fetch(`${this.baseUrl}${WATCHDOG_CHECK_START_ROUTE}`,  {method: "POST"});
+         if (!result.ok && result.status != 500) {
+            throw new Error(`Request failed. Status: ${result.status} ${result.statusText}. Response: ${await result.text()}`);
+        }
+        return await result.json()
+    }
+
+    async checkScanPort(): Promise<CheckScanPort | CheckError> {
+        let result = await fetch(`${this.baseUrl}${WATCHDOG_CHECK_SCAN_PORT_ROUTE}`,  {method: "POST"});
+        if (!result.ok && result.status != 500) {
+            throw new Error(`Request failed. Status: ${result.status} ${result.statusText}. Response: ${await result.text()}`);
+        }
+        return await result.json()
+    }
+
+    async checkScanApikey(): Promise<CheckScanApikey | CheckError> {
+        let result = await fetch(`${this.baseUrl}${WATCHDOG_CHECK_SCAN_API_KEY_ROUTE}`,  {method: "POST"});
+        if (!result.ok && result.status != 500) {
+            throw new Error(`Request failed. Status: ${result.status} ${result.statusText}. Response: ${await result.text()}`);
+        }
+        return await result.json()
+    }
+
+    async checkScanBasicAuth(): Promise<CheckScanBasicAuth | CheckError> {
+        let result = await fetch(`${this.baseUrl}${WATCHDOG_CHECK_SCAN_BASIC_AUTH_ROUTE}`,  {method: "POST"});
+         if (!result.ok && result.status != 500) {
+            throw new Error(`Request failed. Status: ${result.status} ${result.statusText}. Response: ${await result.text()}`);
+        }
+        return await result.json()
     }
 
     /**

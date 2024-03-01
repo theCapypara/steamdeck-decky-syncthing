@@ -14,9 +14,9 @@ import {PLUGIN_API_GET_SETTINGS_JSON, PLUGIN_API_SET_SETTING} from "../../../con
 import {WatchdogApi} from "../../../api/WatchdogApi";
 import SettingDropdown from "../../SettingDropdown";
 
-interface SetSettingParams {
+export interface SetSettingParams {
     setting: string;
-    value: string;
+    value: any;
 }
 
 interface SettingsPageProps {
@@ -118,9 +118,8 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
                     <DialogControlsSectionHeader>Connection</DialogControlsSectionHeader>
                     <Setting type="int" label="Syncthing Port" setting="port" value={settings?.port}
                              onChange={onChange}/>
-                    <Setting type="int" label="API Key" setting="api_key" value={settings?.api_key}
-                             onChange={onChange}
-                             description="Tip: You can start Syncthing from this plugin before entering this key. It will still work, the plugin just won't be able to show you the status of it. Then enter the web interface with the globe icon. At the time of writing the Deck does not support copying from web sites, so you may need to write it down."/>
+                    <Setting type="str" label="API Key" setting="api_key" value={settings?.api_key}
+                             onChange={onChange}/>
                     <Setting type="str" label="Basic Auth Username" setting="basic_auth_user" value={settings?.basic_auth_user}
                              onChange={onChange}
                              description="This and the password are needed if you want to enter the web UI and have it password-protected."/>
@@ -129,11 +128,20 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
                 </DialogControlsSection>
                 <DialogControlsSection>
                     <DialogControlsSectionHeader>Start / Stop</DialogControlsSectionHeader>
-                    <SettingDropdown label="Autostart" options={{"no": "Disabled", "boot": "At boot", "gamescope": "When in Game Mode"}}
-                                     setting="autostart" value={settings?.autostart} onChange={onChange}/>
+                    <SettingDropdown
+                        label="Autostart"
+                        options={{
+                            "no": {label: "Disabled", description: "Syncthing will not start automatically. This will disable the Systemd service."},
+                            "boot": {label: "At boot", description: "Syncthing will start automatically when the system starts. This will enable the Systemd service."},
+                            "gamescope": {label: "When in Game Mode", description: "Whenever Game Mode or Big Picture Mode is started, Syncthing will be started. Syncthing may also be started if the plugin is reloaded."}
+                        }}
+                        setting="autostart"
+                        value={settings?.autostart}
+                        onChange={onChange}
+                    />
                     <Setting type="bool" label="Keep running on Desktop" setting="keep_running_on_desktop"
                              value={settings?.keep_running_on_desktop} onChange={onChange}
-                             description="If enabled, the plugin will try to keep Syncthing running even when switching to Desktop mode. You can then interact with it from Desktop via the Web UI. Do not try to start Syncthing GTK. If however you notice the Web UI does not work, then the plugin failed to keep Syncthing running and you can safely start Syncthing GTK."/>
+                             description="If enabled, the plugin will try to keep Syncthing running even when switching to Desktop mode. If disabled, the plugin will try to stop Syncthing when switching to Desktop mode."/>
                 </DialogControlsSection>
             </DialogBody>
         );
