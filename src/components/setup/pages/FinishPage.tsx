@@ -5,6 +5,7 @@ import {FaCheckCircle} from "react-icons/fa";
 import {Loader} from "../../Loader";
 import {SetSettingParams} from "../../settings/pages/SettingsPage";
 import {PLUGIN_API_SET_SETTING} from "../../../consts";
+import {WatchdogApi} from "../../../api/WatchdogApi";
 
 const FinishPage: FunctionComponent<SetupPageProps> = ({serverApi}) => {
     const [loading, setLoading] = useState(true);
@@ -15,6 +16,7 @@ const FinishPage: FunctionComponent<SetupPageProps> = ({serverApi}) => {
                 setting: "is_setup",
                 value: true,
             })
+            await (new WatchdogApi()).reloadSettings();
             setLoading(false);
         })();
     }, [serverApi]);
