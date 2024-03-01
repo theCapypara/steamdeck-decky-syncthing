@@ -1,5 +1,4 @@
 import {
-    DialogBody,
     ServerAPI,
     SidebarNavigation,
 } from "decky-frontend-lib";
@@ -9,6 +8,7 @@ import {FaBug, FaWrench} from "react-icons/fa";
 import {SettingsPage} from "./pages/SettingsPage";
 import {FaWandMagic} from "react-icons/fa6";
 import {DebugPage} from "./pages/DebugPage";
+import {SetupPage} from "./pages/SetupPage";
 
 interface SettingsRouterProps {
     serverApi: ServerAPI
@@ -19,7 +19,7 @@ export const SettingsRouter: FC<SettingsRouterProps> = ({ serverApi }) => {
         {
             title: "Setup",
             content: (
-                <DialogBody/>
+                <SetupPage/>
             ),
             route: '/decky-syncthing/settings/setup',
             icon: <FaWandMagic/>,

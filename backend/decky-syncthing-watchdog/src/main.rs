@@ -1,4 +1,5 @@
 mod api;
+mod checks;
 mod panic_util;
 mod proxy;
 mod service;

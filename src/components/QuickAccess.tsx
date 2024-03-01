@@ -20,6 +20,7 @@ import {WatchdogApi} from "../api/WatchdogApi";
 import {SyncthingApi} from "../api/SyncthingApi";
 import {Loader} from "./Loader";
 import style from "../style.css";
+import {WelcomePanel} from "./WelcomePanel";
 
 const MAX_TRIES = 150;
 
@@ -107,6 +108,10 @@ export const QuickAccess: FC<{ serverApi: ServerAPI }> = ({serverApi}) => {
     }, [serverApi]);
 
     if (loading) {
+        if (settings != null) {
+            // failsafe:
+            setLoading(false);
+        }
         return (
             <Loader fullScreen={true}/>
         )
@@ -115,6 +120,21 @@ export const QuickAccess: FC<{ serverApi: ServerAPI }> = ({serverApi}) => {
     let api: SyncthingApi | null = null;
     if (settings != null) {
         api = new SyncthingApi(settings.api_key);
+
+        if (settings.is_setup !== true) {
+            return (<>
+                <style>{style}</style>
+                <WelcomePanel onReload={reloadState} isUpdate={settings.is_setup !== false}/>
+            </>);
+        }
+    }
+
+    if (settings == null) {
+        // failsafe:
+        reloadState(true);
+        return (
+            <Loader fullScreen={true}/>
+        );
     }
 
     return (

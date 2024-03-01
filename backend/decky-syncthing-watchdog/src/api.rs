@@ -1,7 +1,9 @@
+use crate::checks::run_check;
 use crate::service::{get_state, init_service, start_service, stop_service};
 use crate::settings::SettingsProvider;
 use hyper::{Body, Method, Request, Response, StatusCode};
 use log::debug;
+use std::collections::HashMap;
 use std::convert::Infallible;
 use std::error::Error;
 use std::net::IpAddr;
@@ -10,6 +12,7 @@ const STATE_ROUTE: &str = "/__decky-watchdog/state";
 const RELOAD_CONFIG_ROUTE: &str = "/__decky-watchdog/reload-config";
 const START_ROUTE: &str = "/__decky-watchdog/start";
 const STOP_ROUTE: &str = "/__decky-watchdog/stop";
+const CHECK_ROUTE: &str = "/__decky-watchdog/check";
 
 pub async fn handle_api(
     client_ip: &IpAddr,
@@ -23,7 +26,9 @@ pub async fn handle_api(
         Method::GET => {
             if req.uri().path().starts_with(STATE_ROUTE) {
                 match get_state(&*settings.settings().await).await {
-                    Ok(state) => Some(Ok(Response::builder().body(Body::from(state)).unwrap())),
+                    Ok(state) => Some(Ok(Response::builder()
+                        .body(Body::from(state.as_static_str()))
+                        .unwrap())),
                     Err(err) => Some(make_error_response(&err)),
                 }
             } else {
@@ -55,6 +60,18 @@ pub async fn handle_api(
                     Ok(()) => Some(make_empty_response()),
                     Err(err) => Some(make_error_response(&err)),
                 }
+            } else if req.uri().path().starts_with(CHECK_ROUTE) {
+                match run_check(settings, req.uri().path().trim_start_matches(CHECK_ROUTE)).await {
+                    Ok(Some(res)) => Some(Ok(res)),
+                    Ok(None) => Some(make_json_error_response(
+                        "Unknown check.",
+                        StatusCode::BAD_REQUEST,
+                    )),
+                    Err(err) => Some(make_json_error_response(
+                        &err.to_string(),
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                    )),
+                }
             } else {
                 None
             }
@@ -76,5 +93,17 @@ pub fn make_error_response(err: &dyn Error) -> Result<Response<Body>, Infallible
         .body(Body::from(format!(
             "<html><body><h1>Internal Server Error</h1><p><pre>{err}</pre></p></body></html>"
         )))
+        .unwrap())
+}
+
+pub fn make_json_error_response(
+    err: &str,
+    status: StatusCode,
+) -> Result<Response<Body>, Infallible> {
+    let mut resp = HashMap::with_capacity(1);
+    resp.insert("error", err);
+    Ok(Response::builder()
+        .status(status)
+        .body(Body::from(serde_json::to_string(&resp).unwrap()))
         .unwrap())
 }

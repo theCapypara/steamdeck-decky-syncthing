@@ -1,8 +1,14 @@
 import {FC} from "react";
 
 // The Syncthing icon is under the original Syncthing license, see https://github.com/syncthing/syncthing
-export const SyncthingIcon: FC = () => {
-    return (<svg version="1.1" viewBox="0 0 117.3 117.3" xmlns="http://www.w3.org/2000/svg" height="1em" width="1em">
+export const SyncthingIcon: FC<{big? : boolean}> = ({big}) => {
+    let size;
+    if (big) {
+        size = "4em";
+    } else {
+        size = "1em";
+    }
+    return (<svg version="1.1" viewBox="0 0 117.3 117.3" xmlns="http://www.w3.org/2000/svg" height={size} width={size}>
         <defs>
             <mask id="mask-powermask-path-effect868" maskUnits="userSpaceOnUse">
                 <path id="mask-powermask-path-effect868_box" d="m-1-1h119.4v119.4h-119.4z" fill="#fff"/>

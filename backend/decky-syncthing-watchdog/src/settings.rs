@@ -47,7 +47,7 @@ pub enum IsSetup {
     Other(String),
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[allow(unused)]
 // v2
 pub struct Settings {
@@ -61,11 +61,11 @@ pub struct Settings {
     // General:
     pub autostart: Autostart,
     pub keep_running_on_desktop: bool,
-    pub port: u16,
+    pub port: u32,
     api_key: String,
     pub basic_auth_user: String,
     pub basic_auth_pass: String,
-    is_setup: IsSetup,
+    pub is_setup: IsSetup,
 }
 
 impl Settings {
@@ -80,6 +80,10 @@ impl Settings {
             ));
         }
         Ok(slf)
+    }
+
+    pub fn is_not_setup(&self) -> bool {
+        self.is_setup != IsSetup::Bool(true)
     }
 }
 
