@@ -192,7 +192,6 @@ export const QuickAccess: FC<{ serverApi: ServerAPI }> = ({serverApi}) => {
             )}
             {state == SyncthingProcessState.Running && api != null && (
                 <>
-
                     <PanelSection title="Folders">
                         <FolderPanel api={api}/>
                     </PanelSection>
