@@ -4,11 +4,11 @@ import {
     Folders, recalcDeviceCompletions,
     StCompletion,
     StConfigDevice,
-    StConfigFolder,
+    StConfigFolder, StConfigOptions,
     StConnections,
     StDbStatus,
     StStatsDevice,
-    StStatsFolder,
+    StStatsFolder, StStatus, StVersion,
     SyncthingApi
 } from "./SyncthingApi";
 import {useEffect, useState} from "react";
@@ -157,6 +157,69 @@ export function useDeviceCompletions(api: SyncthingApi, folders: Folders | null,
     }, [api, refreshToken, folders]);
 
     return [loading, error, deviceConnections];
+}
+
+export function useConfigOptions(api: SyncthingApi, refreshToken?: any): [boolean, unknown| null, StConfigOptions | null] {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<unknown | null>(null);
+    const [options, setOptions] = useState<StConfigOptions | null>(null);
+
+    useEffect(() => {
+        const loadOptions = async () => {
+            setLoading(true);
+            try {
+                setOptions(await api.configOptions());
+            } catch (error) {
+                setError(error);
+            }
+            setLoading(false);
+        };
+        loadOptions();
+    }, [api, refreshToken]);
+
+    return [loading, error, options];
+}
+
+export function useStatus(api: SyncthingApi, refreshToken?: any): [boolean, unknown| null, StStatus | null] {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<unknown | null>(null);
+    const [status, setStatus] = useState<StStatus | null>(null);
+
+    useEffect(() => {
+        const loadStatus = async () => {
+            setLoading(true);
+            try {
+                setStatus(await api.status());
+            } catch (error) {
+                setError(error);
+            }
+            setLoading(false);
+        };
+        loadStatus();
+    }, [api, refreshToken]);
+
+    return [loading, error, status];
+}
+
+export function useVersion(api: SyncthingApi, refreshToken?: any): [boolean, unknown| null, StVersion | null] {
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<unknown | null>(null);
+    const [version, setVersion] = useState<StVersion | null>(null);
+
+    useEffect(() => {
+        const loadVersion = async () => {
+            setLoading(true);
+            try {
+                setVersion(await api.version());
+            } catch (error) {
+                setError(error);
+            }
+            setLoading(false);
+        };
+        loadVersion();
+    }, [api, refreshToken]);
+
+    return [loading, error, version];
 }
 
 const buildDevices = (configDevices: StConfigDevice[], statsDevices: Record<string, StStatsDevice>, justThisId?: string): Devices => {
