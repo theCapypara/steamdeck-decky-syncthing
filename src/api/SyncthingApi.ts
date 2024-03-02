@@ -17,8 +17,90 @@ export class SyncthingError extends Error {
     }
 }
 
+export interface StConfigOptions {
+    listenAddresses?: string[];
+    globalAnnounceServers?: string[];
+    globalAnnounceEnabled?: boolean;
+    localAnnounceEnabled?: boolean;
+    localAnnouncePort?: number;
+    localAnnounceMCAddr?: string;
+    maxSendKbps?: number;
+    maxRecvKbps?: number;
+    reconnectionIntervalS?: number;
+    relaysEnabled?: boolean;
+    relayReconnectIntervalM?: number;
+    startBrowser?: boolean;
+    natEnabled?: boolean;
+    natLeaseMinutes?: number;
+    natRenewalMinutes?: number;
+    natTimeoutSeconds?: number;
+    urAccepted?: number;
+    urSeen?: number;
+    urUniqueId?: string;
+    urURL?: string;
+    urPostInsecurely?: boolean;
+    urInitialDelayS?: number;
+    autoUpgradeIntervalH?: number;
+    upgradeToPreReleases?: boolean;
+    keepTemporariesH?: number;
+    cacheIgnoredFiles?: boolean;
+    progressUpdateIntervalS?: number;
+    limitBandwidthInLan?: boolean;
+    minHomeDiskFree?: { value?: number; unit?: string };
+    releasesURL?: string;
+    alwaysLocalNets?: any[];
+    overwriteRemoteDeviceNamesOnConnect?: boolean;
+    tempIndexMinBlocks?: number;
+    unackedNotificationIDs?: any[];
+    trafficClass?: number;
+    setLowPriority?: boolean;
+    maxFolderConcurrency?: number;
+    crURL?: string;
+    crashReportingEnabled?: boolean;
+    stunKeepaliveStartS?: number;
+    stunKeepaliveMinS?: number;
+    stunServers?: string[];
+    databaseTuning?: string;
+    maxConcurrentIncomingRequestKiB?: number;
+    announceLANAddresses?: boolean;
+    sendFullIndexOnUpgrade?: boolean;
+    featureFlags?: any[];
+    connectionLimitEnough?: number;
+    connectionLimitMax?: number;
+    insecureAllowOldTLSVersions?: boolean;
+    connectionPriorityTcpLan?: number;
+    connectionPriorityQuicLan?: number;
+    connectionPriorityTcpWan?: number;
+    connectionPriorityQuicWan?: number;
+    connectionPriorityRelay?: number;
+    connectionPriorityUpgradeThreshold?: number;
+}
+
+export interface StConnectionService {
+  error?: any | null;
+  lanAddresses?: string[];
+  wanAddresses?: string[];
+}
+
 export interface StStatus {
+    alloc?: number;
+    connectionServiceStatus?: Record<string, StConnectionService>;
+    cpuPercent?: number;
+    discoveryEnabled?: boolean;
+    discoveryErrors?: Record<string, { error?: any | null }>;
+    discoveryMethods?: number;
+    discoveryStatus?: Record<string, { error?: any | null }>;
+    goroutines?: number;
+    guiAddressOverridden?: boolean;
+    guiAddressUsed?: string;
+    lastDialStatus?: Record<string, { error?: any | null, when?: string }>;
     myID?: string;
+    pathSeparator?: string;
+    startTime?: string;
+    sys?: number;
+    tilde?: string;
+    uptime?: number;
+    urVersionMax?: number;
 }
 
 export interface StConfigDevice {
@@ -98,13 +180,42 @@ export interface StStatsFolder {
 }
 
 export interface StDbStatus {
-    errors?: number;
-    pullErrors?: number;
-    needTotalItems?: number;
-    state?: string;
-    stateChanged?: string; // ISO 8601
-    error?: string;
-
+  errors?: number;
+  pullErrors?: number;
+  invalid?: string;
+  globalFiles?: number;
+  globalDirectories?: number;
+  globalSymlinks?: number;
+  globalDeleted?: number;
+  globalBytes?: number;
+  globalTotalItems?: number;
+  localFiles?: number;
+  localDirectories?: number;
+  localSymlinks?: number;
+  localDeleted?: number;
+  localBytes?: number;
+  localTotalItems?: number;
+  needFiles?: number;
+  needDirectories?: number;
+  needSymlinks?: number;
+  needDeletes?: number;
+  needBytes?: number;
+  needTotalItems?: number;
+  receiveOnlyChangedFiles?: number;
+  receiveOnlyChangedDirectories?: number;
+  receiveOnlyChangedSymlinks?: number;
+  receiveOnlyChangedDeletes?: number;
+  receiveOnlyChangedBytes?: number;
+  receiveOnlyTotalItems?: number;
+  inSyncFiles?: number;
+  inSyncBytes?: number;
+  state?: string;
+  stateChanged?: string; // ISO 8601
+  error?: string;
+  version?: number;
+  sequence?: number;
+  ignorePatterns?: boolean;
+  watchError?: string;
 }
 
 export interface StConnectionStatsSingle {
@@ -161,6 +272,24 @@ export interface StCompletion {
   sequence?: number;
 }
 
+export interface StVersion {
+  arch?: string
+  codename?: string
+  container?: boolean
+  date?: string
+  extra?: string
+  isBeta?: boolean
+  isCandidate?: boolean
+  isRelease?: boolean
+  longVersion?: string
+  os?: string
+  stamp?: string
+  tags?: string[]
+  user?: string
+  version?: string
+}
+
+
 export class SyncthingApi {
     private readonly baseUrl: string;
     private readonly apiKey: string;
@@ -172,6 +301,14 @@ export class SyncthingApi {
 
     status(): Promise<StStatus> {
         return this.get("rest/system/status");
+    }
+
+    version(): Promise<StVersion> {
+        return this.get("rest/system/version");
+    }
+
+    configOptions(): Promise<StConfigOptions> {
+        return this.get("rest/config/options");
     }
 
     configDevices(): Promise<StConfigDevice[]> {
