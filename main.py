@@ -63,8 +63,7 @@ class Plugin:
         return json.dumps(self.settings)
 
     async def restart_watchdog(self):
-        reset_all_processes()
-        await asyncio.sleep(2)
+        await reset_all_processes()
         start_watchdog()
 
     async def set_setting(self, setting: str, value: any):
@@ -87,7 +86,7 @@ class Plugin:
         logger.info("Loaded.")
         self.log_file = None
         self.syncthing = None
-        self.settings = load_settings()
+        self.settings = await load_settings()
         start_watchdog()
         while True:
             await asyncio.sleep(1)
@@ -127,7 +126,7 @@ def start_watchdog():
     )
 
 
-def load_settings() -> SettingsV2:
+async def load_settings() -> SettingsV2:
     if os.path.exists(SETTINGS_PATH):
         try:
             with open(SETTINGS_PATH, "rb") as f:
@@ -142,7 +141,7 @@ def load_settings() -> SettingsV2:
             return default_settings(save=True)
         if settings["config_version"] == 1:
             logger.error(f"Running settings migration to V2.")
-            return migrate_settings_v2(settings)
+            return await migrate_settings_v2(settings)
         return settings
     return default_settings(save=True)
 
@@ -168,7 +167,7 @@ def default_settings(*, save=False) -> SettingsV2:
     return defaults
 
 
-def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
+async def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
     settings = SettingsV2(
         config_version=2,
         mode="flatpak",
@@ -184,13 +183,13 @@ def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
         is_setup="migratingV2"
     )
 
-    reset_all_processes()
+    await reset_all_processes()
     with open(SETTINGS_PATH, "w") as f:
         json.dump(settings, f)
     return settings
 
 
-def reset_all_processes():
+async def reset_all_processes():
     # Force exit all Syncthing related processes. This will also exit the (old) watchdog.
     subprocess.Popen(
         [
@@ -201,3 +200,4 @@ def reset_all_processes():
         env=dict(os.environ),
         start_new_session=True,
     )
+    await asyncio.sleep(2)
