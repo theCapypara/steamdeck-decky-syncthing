@@ -177,6 +177,7 @@ export interface StConfigFolder {
 
 export interface StStatsFolder {
     lastScan?: string; // ISO 8601
+    lastFile?: { at?: string; filename?: string; deleted?: boolean };
 }
 
 export interface StDbStatus {
@@ -449,7 +450,98 @@ export function deviceStatus(
     }
 
     return DeviceStatus.Disconnected;
+}
 
+export enum FolderStatus {
+    Paused,
+    Unknown,
+    Stopped,
+    Scanning,
+    Syncing,
+    Error,
+    OutOfSync,
+    FailedItems,
+    Unshared,
+    Idle,
+    LocalAdditions,
+    LocalUnencrypted,
+    CleanWaiting,
+    ScanWaiting,
+    SyncPreparing,
+    SyncWaiting,
+    Cleaning,
+}
+
+export function folderStatus(folder: Folder) {
+    if (folder.paused) {
+        return FolderStatus.Paused;
+    }
+
+    if (!folder.state) {
+        return FolderStatus.Unknown;
+    }
+
+    switch (folder.state) {
+        case 'clean-waiting':
+            return FolderStatus.CleanWaiting;
+        case 'scan-waiting':
+            return FolderStatus.ScanWaiting;
+        case 'sync-preparing':
+            return FolderStatus.SyncPreparing;
+        case 'sync-waiting':
+            return FolderStatus.SyncWaiting;
+        case 'cleaning':
+            return FolderStatus.Cleaning;
+        case 'faileditems':
+            return FolderStatus.FailedItems;
+        case 'localunencrypted':
+            return FolderStatus.LocalUnencrypted;
+        case 'outofsync':
+            return FolderStatus.OutOfSync;
+        case 'localadditions':
+            return FolderStatus.LocalAdditions;
+        case 'paused':
+            return FolderStatus.Paused;
+        case 'scanning':
+            return FolderStatus.Scanning;
+        case 'error':
+        case 'stopped':
+            return FolderStatus.Stopped;
+        case 'syncing':
+            return FolderStatus.Syncing;
+        case 'unknown':
+            return FolderStatus.Unknown;
+        case 'unshared':
+            return FolderStatus.Unshared;
+    }
+
+    if ((folder.needTotalItems ?? 0) > 0) {
+        return FolderStatus.OutOfSync;
+    }
+    if ((folder.errors ?? 0) > 0) {
+        return FolderStatus.FailedItems;
+    }
+
+    let hasReceiveOnlyChanges = false;
+    if (folder.type == "receiveonly" || folder.type == "receiveencrypted") {
+        hasReceiveOnlyChanges = (folder.receiveOnlyTotalItems ?? 0) > 0;
+    }
+
+    if (hasReceiveOnlyChanges) {
+        if (folder.type === "receiveonly") {
+            return FolderStatus.LocalAdditions;
+        }
+        return FolderStatus.LocalUnencrypted;
+    }
+    if ((folder.devices?.length ?? 0) <= 1) {
+        return FolderStatus.Unshared;
+    }
+
+    if (folder.state === "idle") {
+        return FolderStatus.Idle;
+    }
+
+    return FolderStatus.Unknown;
 }
 
 export interface DeviceCompletion {

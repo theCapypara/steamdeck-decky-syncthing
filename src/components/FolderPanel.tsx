@@ -1,6 +1,6 @@
 import {FC, ReactNode} from "react";
 import {
-    Folder,
+    Folder, folderStatus,
     SyncthingApi
 } from "../api/SyncthingApi";
 import {PanelSectionRow, showModal} from "decky-frontend-lib";
@@ -30,7 +30,7 @@ export const FolderPanel: FC<FolderPanelProps> = ({api}) => {
     for (const folder of folders ? Object.values(folders) : []) {
         if (folder.id != null) {
             folderNodes.push(
-                <SyncthingEntity primaryIcon={<FolderStatusIcon folder={folder}/>}
+                <SyncthingEntity primaryIcon={<FolderStatusIcon folderStatus={folderStatus(folder)}/>}
                                  label={makeFolderLabel(folder)}
                                  onClick={() => showModal(<FolderDetailsModal api={api} id={folder.id as string}/>)}/>
             );
