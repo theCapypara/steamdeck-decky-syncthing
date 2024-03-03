@@ -2,7 +2,7 @@ import {FC, ReactNode} from "react";
 import {Field} from "decky-frontend-lib";
 import {Device, StConnections} from "../../../api/SyncthingApi";
 import {FaCloudUploadAlt} from "react-icons/fa";
-import {byteUnit} from "../../../byteUnit";
+import {byteUnit} from "../../../util";
 
 export interface DeviceUploadRateRowProps {
     device: Device;

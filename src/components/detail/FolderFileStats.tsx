@@ -1,6 +1,6 @@
 import {FC} from "react";
 import {FaCopy, FaFolder, FaHdd} from "react-icons/fa";
-import {byteUnit} from "../../byteUnit";
+import {byteUnit} from "../../util";
 
 export interface FolderFileStatsProps {
     bytes: number;

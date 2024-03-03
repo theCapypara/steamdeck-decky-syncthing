@@ -2,7 +2,7 @@ import {FC} from "react";
 import {Field} from "decky-frontend-lib";
 import {DeviceCompletion} from "../../../api/SyncthingApi";
 import {FaExchangeAlt} from "react-icons/fa";
-import {byteUnit} from "../../../byteUnit";
+import {byteUnit} from "../../../util";
 
 export interface DeviceOutOfSyncItemsRowProps {
     completions: DeviceCompletion;
