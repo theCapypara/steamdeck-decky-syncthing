@@ -64,7 +64,11 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                         </span>
                     </div>
                 </DialogButton>
-                <DialogButton onClick={() => select("syncthingy")}>
+                {/*
+                  * Does not work reliably, see: https://github.com/SteamDeckHomebrew/decky-plugin-database/pull/557
+                  * and the comment in `SetupPage.tsx`.
+                  */}
+                {/*<DialogButton onClick={() => select("syncthingy")}>
                     <div className="syncthing-entity-label">
                         <span className="syncthing-entity-label--icons"><FaBoxOpen/></span>
                         <span className="syncthing-entity-label--detailed-label">
@@ -75,7 +79,7 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                             </span>
                         </span>
                     </div>
-                </DialogButton>
+                </DialogButton>*/}
                 <DialogButton onClick={() => select("other-flatpak")}>
                     <div className="syncthing-entity-label">
                         <span className="syncthing-entity-label--icons"><FaBoxesStacked/></span>

@@ -96,6 +96,9 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
                     <p>
                         Please enter the ID of the Flatpak. Advanced users can also configure a different binary to launch.
                         The default "syncthing" should work for most cases.
+                        <br/>
+                        Please note that no other Flatpaks except for "Syncthing GTK" are supported or tested at the moment.
+                        Especially the "Syncthingy" Flatpak has issues with this plugin.
                     </p>
                 </DialogControlsSection>
                 <DialogControlsSection>
