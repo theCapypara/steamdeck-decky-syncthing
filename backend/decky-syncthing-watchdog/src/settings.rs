@@ -1,7 +1,8 @@
 use crate::util::make_unsafe_https_client;
 use hyper::http::uri::Scheme;
 use hyper::{Body, Method, Request, Uri};
-use serde::Deserialize;
+use serde::de::Unexpected;
+use serde::{Deserialize, Deserializer};
 use std::io;
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
@@ -51,6 +52,7 @@ pub enum IsSetup {
 #[allow(unused)]
 // v2
 pub struct Settings {
+    #[serde(deserialize_with = "try_deserialize_u32_from_str")]
     config_version: u32,
     pub mode: Mode,
     // Mode: systemd
@@ -61,6 +63,7 @@ pub struct Settings {
     // General:
     pub autostart: Autostart,
     pub keep_running_on_desktop: bool,
+    #[serde(deserialize_with = "try_deserialize_u32_from_str")]
     pub port: u32,
     api_key: String,
     pub basic_auth_user: String,
@@ -165,5 +168,32 @@ impl SettingsProvider {
 
     pub async fn settings(&self) -> impl Deref<Target = Settings> + '_ {
         self.current_settings.read().await
+    }
+}
+
+/// Try to deserialize an u32 from a string if it is a string for some reasons. Otherwise
+/// deserialize directly.
+fn try_deserialize_u32_from_str<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum MaybeU32<'a> {
+        String(&'a str),
+        U32(u32),
+    }
+
+    match MaybeU32::deserialize(deserializer)? {
+        MaybeU32::String(string) => {
+            if let Ok(num) = string.parse::<u32>() {
+                return Ok(num);
+            }
+            Err(serde::de::Error::invalid_type(
+                Unexpected::Str(string),
+                &"an u32 integer",
+            ))
+        }
+        MaybeU32::U32(v) => Ok(v),
     }
 }
