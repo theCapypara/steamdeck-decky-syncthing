@@ -10,6 +10,7 @@ import {loadSettingsForWizardPage} from "../util/loadSettingsForWizardPage";
 
 export type ApplyConfig =
     {type: "systemd", systemdService: string}
+    | {type: "systemd_system", systemdService: string}
     | {type: "flatpak", flatpakName: string; flatpakBinary: string};
 
 const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, backPage, serverApi}) => {
@@ -24,7 +25,7 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
                 setting: "mode",
                 value: applyConf.type,
             }));
-            if (applyConf.type === "systemd") {
+            if (applyConf.type === "systemd" || applyConf.type === "systemd_system") {
                 promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
                     setting: "service_name",
                     value: applyConf.systemdService,
@@ -140,6 +141,52 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
                 </DialogControlsSection>
             </DialogBody>
         );
+    } else if (statePassedIn.type == "system_system") {
+        const systemd_system_warning = <>
+            <p>In order to use a Systemd system service, the current user (on a Steam Deck "deck") needs to be able to control the system service without using "sudo".</p>
+            <p>This can be achieved on most distributions using polkit ("org.freedesktop.systemd1.manage-units" for the unit). Please see the manual of your distribution for more details or choose another installation method.</p>
+            <p>In order to modify the "autostart" setting of Syncthing, the current user also needs to be allowed to disable and enable Systemd system services (polkit "org.freedesktop.systemd1.manage-unit-files"). If this permission isn't given, the autostart setting will not work correctly and you will need to manage this setting manually using systemctl.</p>
+        </>;
+        if (statePassedIn.name == null) {
+            body = (
+                <DialogBody>
+                    <DialogControlsSection>
+                        <p>
+                            Please enter the name of the Systemd system service.
+                        </p>
+                        {systemd_system_warning}
+                    </DialogControlsSection>
+                    <DialogControlsSection>
+                        <Setting type="str" label="Systemd service name" setting="service_name" value={settings?.service_name}
+                                 onChange={onChange}/>
+                    </DialogControlsSection>
+                    <DialogControlsSection>
+                        <DialogButton onClick={() => applySettingsAndContinue({
+                            type: "systemd_system",
+                            systemdService: settings?.service_name ?? ""
+                        })}>
+                            Continue
+                        </DialogButton>
+                    </DialogControlsSection>
+                </DialogBody>
+            );
+        } else {
+            body = (
+                <DialogBody>
+                    <DialogControlsSection>
+                        {systemd_system_warning}
+                    </DialogControlsSection>
+                    <DialogControlsSection>
+                        <DialogButton onClick={() => applySettingsAndContinue({
+                            type: "systemd_system",
+                            systemdService: statePassedIn.name
+                        })}>
+                            Continue
+                        </DialogButton>
+                    </DialogControlsSection>
+                </DialogBody>
+            );
+        }
     } else if (statePassedIn.type == "flatpak") {
         applySettingsAndContinue(
             {type: "flatpak", flatpakName: statePassedIn.name, flatpakBinary: "syncthing"}

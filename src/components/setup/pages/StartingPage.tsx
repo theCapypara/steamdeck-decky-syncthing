@@ -54,6 +54,15 @@ const StartingPage: FunctionComponent<SetupPageProps> = ({nextPage, backPage, se
                     Systemd user service 'decky-syncthing' that this plugin created based on your settings.
                 </p>
             );
+        } else if (statePassedInCast.type == "systemd_system") {
+            help = `Make sure the Systemd system service with the ID '${statePassedInCast.systemdService}' exists.`;
+            moreHelp = (
+                <p className={"syncthing-details"}>
+                    Also make sure the current user has permissions to manage it without using "sudo".<br/>
+                    If the user has permissions, you want to try and investigate this error further. Check the status
+                    or journal logs of the Systemd system service '{statePassedInCast.systemdService}'.
+                </p>
+            );
         } else {
             help = `Make sure the Systemd user service with the ID '${statePassedInCast.systemdService}' exists.`;
             moreHelp = (

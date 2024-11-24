@@ -1,6 +1,6 @@
 export interface Settings {
-    mode: "systemd" | "flatpak";
-    // Mode: systemd
+    mode: "systemd" | "systemd_system" | "flatpak";
+    // Mode: systemd OR systemd_service
     service_name: string;
     // Mode: flatpak
     flatpak_name: string;

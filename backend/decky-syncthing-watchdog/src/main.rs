@@ -17,7 +17,7 @@ use hyper::header::{ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN};
 use hyper::server::conn::AddrStream;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::{Body, Request, Response, Server};
-use log::{debug, error, info, LevelFilter};
+use log::{debug, error, info, warn, LevelFilter};
 use log4rs::append::rolling_file::policy::compound::roll::fixed_window::FixedWindowRoller;
 use log4rs::append::rolling_file::policy::compound::trigger::size::SizeTrigger;
 use log4rs::append::rolling_file::policy::compound::CompoundPolicy;
@@ -70,7 +70,9 @@ async fn main() -> ExitCode {
     let settings = SettingsProvider::new(settings_path).await.unwrap();
 
     let mut gamescope_watchdog = GamescopeWatchdog::new(settings.clone());
-    init_service(&*settings.settings().await).await.unwrap();
+    if let Err(e) = init_service(&*settings.settings().await).await {
+        warn!("failed to init service: {e:?}");
+    }
 
     let make_svc = make_service_fn(|conn: &AddrStream| {
         let settings = settings.clone();

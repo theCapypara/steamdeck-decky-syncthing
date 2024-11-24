@@ -86,7 +86,7 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
         );
     } else {
         let modeSettings;
-        if (settings?.mode === "systemd") {
+        if (settings?.mode === "systemd" || settings?.mode === "systemd_system") {
             modeSettings = (
                 <DialogControlsSection>
                     <DialogControlsSectionHeader>Service Settings</DialogControlsSectionHeader>
@@ -110,7 +110,7 @@ export const SettingsPage: FC<SettingsPageProps> = ({serverApi}) => {
             <DialogBody>
                 <DialogControlsSection>
                     <DialogControlsSectionHeader>Mode</DialogControlsSectionHeader>
-                    <SettingDropdown label="Launch Mode" options={{"flatpak": "Flatpak", "systemd": "Existing Systemd service"}}
+                    <SettingDropdown label="Launch Mode" options={{"flatpak": "Flatpak", "systemd": "Existing Systemd user service", "systemd_system": "Existing Systemd system service"}}
                                      setting="mode" value={settings?.mode} onChange={onChange}/>
                 </DialogControlsSection>
                 {modeSettings}

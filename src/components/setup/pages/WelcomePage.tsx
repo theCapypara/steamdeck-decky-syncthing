@@ -15,6 +15,11 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
             case "other-system":
                 nextPage({type: "system", name: service_or_flatpak_name});
                 break;
+            case "system_system":
+                service_or_flatpak_name = "syncthing";
+            case "other-system_system":
+                nextPage({type: "system_system", name: service_or_flatpak_name});
+                break;
             case "syncthing-gtk":
                 service_or_flatpak_name = "me.kozec.syncthingtk"
             case "syncthingy":
@@ -44,10 +49,10 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                     <div className="syncthing-entity-label">
                         <span className="syncthing-entity-label--icons"><FaComputer/></span>
                         <span className="syncthing-entity-label--detailed-label">
-                            Installed directly on the System
+                            Installed directly on the System via user service
                             <br/>
                             <span className="syncthing-entity-label--description">
-                                eg. via Pacman; a Systemd service "<pre>syncthing</pre>" exists.
+                                eg. via Pacman; a Systemd user service "<pre>syncthing</pre>" exists.
                             </span>
                         </span>
                     </div>
@@ -92,7 +97,27 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                     <div className="syncthing-entity-label">
                         <span className="syncthing-entity-label--icons"><FaComputer/></span>
                         <span className="syncthing-entity-label--detailed-label">
-                            Installed via another Systemd service
+                            Installed via another Systemd user service
+                        </span>
+                    </div>
+                </DialogButton>
+                <DialogButton onClick={() => select("system_system")}>
+                    <div className="syncthing-entity-label">
+                        <span className="syncthing-entity-label--icons"><FaComputer/></span>
+                        <span className="syncthing-entity-label--detailed-label">
+                            Installed directly on the System via system service (advanced)
+                            <br/>
+                            <span className="syncthing-entity-label--description">
+                                a Systemd system service "<pre>syncthing</pre>" exists.
+                            </span>
+                        </span>
+                    </div>
+                </DialogButton>
+                <DialogButton onClick={() => select("other-system_system")}>
+                    <div className="syncthing-entity-label">
+                        <span className="syncthing-entity-label--icons"><FaComputer/></span>
+                        <span className="syncthing-entity-label--detailed-label">
+                            Installed via another Systemd system service (advanced)
                         </span>
                     </div>
                 </DialogButton>

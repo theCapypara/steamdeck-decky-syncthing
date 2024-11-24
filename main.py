@@ -37,8 +37,8 @@ class SettingsV1(TypedDict):
 # See `backend/decky-syncthing-watchdog/src/settings.rs` for details.
 class SettingsV2(TypedDict):
     config_version: Literal[2]
-    mode: Union[Literal["systemd"], Literal["flatpak"]]
-    # Mode: systemd
+    mode: Union[Literal["systemd"], Literal["systemd_system"], Literal["flatpak"]]
+    # Mode: systemd OR systemd_system
     service_name: str
     # Mode: flatpak
     flatpak_name: str

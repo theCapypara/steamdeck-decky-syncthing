@@ -77,6 +77,14 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
                 )),
                 error_details: Some(err.to_string()),
             }),
+            Mode::SystemdSystem => Ok(StartResponse {
+                success: false,
+                error: Some(format!(
+                    "Failed to setup the Systemd service. Please check the service '{}' exists and can be managed by the current user (without sudo).",
+                    settings.service_name
+                )),
+                error_details: Some(err.to_string()),
+            }),
             Mode::Flatpak => {
                 // In Flatpak mode, this shouldn't fail.
                 Err(err.into())
@@ -106,6 +114,7 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
 
     let error = match settings.mode {
         Mode::Systemd => "Failed to start Syncthing.".to_string(),
+        Mode::SystemdSystem => "Failed to start Syncthing. Please check that the current user has permissions to manage the service.".to_string(),
         Mode::Flatpak => format!(
             "Failed to start Syncthing. Please check the Flatpak '{}' is installed.",
             settings.flatpak_name
@@ -251,7 +260,9 @@ async fn get_config(settings: &Settings) -> Option<sxd_document::Package> {
     };
 
     let probable_path_to_settings = match settings.mode {
-        Mode::Systemd => home.join(".config").join("syncthing").join("config.xml"),
+        Mode::Systemd | Mode::SystemdSystem => {
+            home.join(".config").join("syncthing").join("config.xml")
+        }
         Mode::Flatpak => home
             .join(".var")
             .join("app")

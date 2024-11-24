@@ -5,7 +5,7 @@
 use crate::settings::{Autostart, Mode, Settings};
 use homedir::get_my_home;
 use lazy_static::lazy_static;
-use log::{debug, info};
+use log::{debug, info, warn};
 use std::io;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -29,7 +29,7 @@ pub type ServiceError = io::Error;
 
 enum ServiceType<'a> {
     Managed,
-    External(&'a str),
+    External { name: &'a str, user_service: bool },
 }
 
 impl<'a> ServiceType<'a> {
@@ -37,15 +37,22 @@ impl<'a> ServiceType<'a> {
 
     fn get_for(settings: &'a Settings) -> Self {
         match settings.mode {
-            Mode::Systemd => Self::External(&settings.service_name),
+            Mode::Systemd => Self::External {
+                name: &settings.service_name,
+                user_service: true,
+            },
+            Mode::SystemdSystem => Self::External {
+                name: &settings.service_name,
+                user_service: false,
+            },
             Mode::Flatpak => Self::Managed,
         }
     }
 
-    fn systemd_unit(&'a self) -> &'a str {
+    fn systemd_unit(&'a self) -> (&'a str, bool) {
         match self {
-            ServiceType::Managed => Self::MANAGED_SERVICE_NAME,
-            ServiceType::External(service_name) => service_name,
+            ServiceType::Managed => (Self::MANAGED_SERVICE_NAME, true),
+            ServiceType::External { name, user_service } => (name, *user_service),
         }
     }
 }
@@ -57,7 +64,7 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
     }
     debug!("Init service");
     let service_type = ServiceType::get_for(settings);
-    let managed_service_name = ServiceType::Managed.systemd_unit();
+    let managed_service_name = ServiceType::Managed.systemd_unit().0;
     match &service_type {
         ServiceType::Managed => {
             // Create/Update the managed service.
@@ -73,20 +80,20 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
             match settings.autostart {
                 Autostart::Boot => {
                     debug!("Enable service {managed_service_name}");
-                    systemctl::enable(managed_service_name).await?;
+                    systemctl::enable(managed_service_name, true).await?;
                 }
                 _ => {
                     // if mode is gamescope, this process will start it manually.
                     debug!("Disable service {managed_service_name}");
-                    systemctl::disable(managed_service_name).await?;
+                    systemctl::disable(managed_service_name, true).await?;
                 }
             }
         }
-        ServiceType::External(external_service_name) => {
+        ServiceType::External { name, user_service } => {
             // Disable & delete the managed service.
             if service_exists_in_config(managed_service_name).await? {
                 debug!("Disable and delete managed service");
-                systemctl::disable(managed_service_name).await.ok();
+                systemctl::disable(managed_service_name, true).await.ok();
 
                 let r = delete_managed_service(managed_service_name).await;
                 if r.is_ok() {
@@ -96,12 +103,16 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
             // Enable or disable the external service based on autostart settings.
             match settings.autostart {
                 Autostart::Boot => {
-                    debug!("Enable service {external_service_name}");
-                    systemctl::enable(external_service_name).await?;
+                    debug!("Enable service {name}");
+                    if let Err(e) = systemctl::enable(name, *user_service).await {
+                        warn!("failed to enable external service via systemd. Autostart will not work: {e:?}");
+                    }
                 }
                 _ => {
-                    debug!("Disable service {external_service_name}");
-                    systemctl::disable(external_service_name).await?;
+                    debug!("Disable service {name}");
+                    if let Err(e) = systemctl::disable(name, *user_service).await {
+                        warn!("failed to disable external service via systemd. Service will still autostart: {e:?}");
+                    }
                 }
             }
         }
@@ -112,7 +123,9 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
 
 pub async fn get_state(settings: &Settings) -> Result<SyncthingState, ServiceError> {
     debug!("get_state");
-    systemctl::state(ServiceType::get_for(settings).systemd_unit()).await
+    let service_type = ServiceType::get_for(settings);
+    let (service_name, is_user_service) = service_type.systemd_unit();
+    systemctl::state(service_name, is_user_service).await
 }
 
 pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
@@ -121,7 +134,9 @@ pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
         return Ok(());
     }
     debug!("start_service");
-    let r = systemctl::start(ServiceType::get_for(settings).systemd_unit()).await;
+    let service_type = ServiceType::get_for(settings);
+    let (service_name, is_user_service) = service_type.systemd_unit();
+    let r = systemctl::start(service_name, is_user_service).await;
     if r.is_ok() {
         *LAST_START.lock().await = Some(Instant::now());
     }
@@ -134,7 +149,9 @@ pub async fn stop_service(settings: &Settings) -> Result<(), ServiceError> {
         return Ok(());
     }
     debug!("stop_service");
-    systemctl::stop(ServiceType::get_for(settings).systemd_unit()).await
+    let service_type = ServiceType::get_for(settings);
+    let (service_name, is_user_service) = service_type.systemd_unit();
+    systemctl::stop(service_name, is_user_service).await
 }
 
 pub async fn last_start_ago() -> Duration {
@@ -194,14 +211,19 @@ async fn service_exists_in_config(unit: &str) -> Result<bool, io::Error> {
 }
 
 mod systemctl {
+    use lazy_static::lazy_static;
     use log::debug;
     use std::io;
     use std::iter::once;
+    use std::path::PathBuf;
     use std::process::ExitStatus;
     use tokio::io::AsyncReadExt;
     use tokio::process::{Child, Command};
+    use which::which;
 
-    const SYSTEMCTL_PATH: &str = "/usr/bin/systemctl";
+    lazy_static! {
+        static ref WHICH_SYSTEMCTL: Result<PathBuf, which::Error> = which("systemctl");
+    }
 
     #[derive(Debug, Clone, Copy)]
     pub enum State {
@@ -221,21 +243,38 @@ mod systemctl {
     }
 
     /// Invokes `systemctl $args`
-    fn spawn_child(args: &[&str]) -> io::Result<Child> {
-        debug!("systemctl: --user {}", args.join(" "));
-        Command::new(SYSTEMCTL_PATH)
+    fn spawn_child(args: &[&str], is_user_service: bool) -> io::Result<Child> {
+        if is_user_service {
+            debug!("systemctl: --user {}", args.join(" "));
+            Command::new(
+                WHICH_SYSTEMCTL
+                    .as_ref()
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, *e))?,
+            )
             .args(once("--user").chain(args.iter().copied()))
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::piped())
             .spawn()
+        } else {
+            debug!("systemctl: {}", args.join(" "));
+            Command::new(
+                WHICH_SYSTEMCTL
+                    .as_ref()
+                    .map_err(|e| io::Error::new(io::ErrorKind::Other, *e))?,
+            )
+            .args(args.iter().copied())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+        }
     }
 
-    async fn systemctl_raw(args: Vec<&str>) -> io::Result<ExitStatus> {
-        spawn_child(&args)?.wait().await
+    async fn systemctl_raw(args: Vec<&str>, is_user_service: bool) -> io::Result<ExitStatus> {
+        spawn_child(&args, is_user_service)?.wait().await
     }
 
-    async fn systemctl(args: Vec<&str>) -> io::Result<()> {
-        let mut child = spawn_child(&args)?;
+    async fn systemctl(args: Vec<&str>, is_user_service: bool) -> io::Result<()> {
+        let mut child = spawn_child(&args, is_user_service)?;
         let exit = child.wait().await?;
         if exit.success() {
             Ok(())
@@ -257,29 +296,35 @@ mod systemctl {
     }
 
     pub async fn daemon_reload() -> io::Result<()> {
-        systemctl(vec!["daemon-reload"]).await
+        systemctl(vec!["daemon-reload"], true).await
     }
 
-    pub async fn start(unit: &str) -> io::Result<()> {
-        systemctl(vec!["start", unit]).await
+    pub async fn start(unit: &str, is_user_service: bool) -> io::Result<()> {
+        systemctl(vec!["start", unit], is_user_service).await
     }
 
-    pub async fn stop(unit: &str) -> io::Result<()> {
-        systemctl(vec!["stop", unit]).await
+    pub async fn stop(unit: &str, is_user_service: bool) -> io::Result<()> {
+        systemctl(vec!["stop", unit], is_user_service).await
     }
 
-    pub async fn enable(unit: &str) -> io::Result<()> {
-        systemctl(vec!["enable", unit]).await
+    pub async fn enable(unit: &str, is_user_service: bool) -> io::Result<()> {
+        systemctl(vec!["enable", unit], is_user_service).await
     }
 
-    pub async fn disable(unit: &str) -> io::Result<()> {
-        systemctl(vec!["disable", unit]).await
+    pub async fn disable(unit: &str, is_user_service: bool) -> io::Result<()> {
+        systemctl(vec!["disable", unit], is_user_service).await
     }
 
-    pub async fn state(unit: &str) -> io::Result<State> {
-        if systemctl_raw(vec!["is-active", unit]).await?.success() {
+    pub async fn state(unit: &str, is_user_service: bool) -> io::Result<State> {
+        if systemctl_raw(vec!["is-active", unit], is_user_service)
+            .await?
+            .success()
+        {
             Ok(State::Running)
-        } else if systemctl_raw(vec!["is-failed", unit]).await?.success() {
+        } else if systemctl_raw(vec!["is-failed", unit], is_user_service)
+            .await?
+            .success()
+        {
             Ok(State::Failed)
         } else {
             Ok(State::Stopped)

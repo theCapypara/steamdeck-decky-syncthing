@@ -27,9 +27,10 @@ pub enum SettingsError {
 }
 
 #[derive(Debug, Deserialize, PartialEq, Eq, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum Mode {
     Systemd,
+    SystemdSystem,
     Flatpak,
 }
 
