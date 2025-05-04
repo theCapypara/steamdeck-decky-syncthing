@@ -2,7 +2,7 @@ use crate::proxy::handle_proxy;
 use crate::service::{SyncthingState, get_state, init_service, start_service, stop_service};
 use crate::settings::{IsSetup, Mode, Settings, SettingsProvider};
 use anyhow::anyhow;
-use homedir::get_my_home;
+use homedir::my_home;
 use hyper::http::uri::Scheme;
 use hyper::{Body, Request, Response, StatusCode, Uri, body};
 use log::{debug, warn};
@@ -254,7 +254,7 @@ async fn basic_auth(settings: &Settings) -> Result<BasicAuthResponse, anyhow::Er
 }
 
 async fn get_config(settings: &Settings) -> Option<sxd_document::Package> {
-    let home = match get_my_home() {
+    let home = match my_home() {
         Ok(Some(home)) => home,
         _ => {
             return None;

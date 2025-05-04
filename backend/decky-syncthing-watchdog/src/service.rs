@@ -3,7 +3,7 @@
 //! If not in Flatpak mode: Uninstalls it (if exists) and controls the configured service.
 
 use crate::settings::{Autostart, Mode, Settings};
-use homedir::get_my_home;
+use homedir::my_home;
 use log::{debug, info, warn};
 use std::io;
 use std::path::PathBuf;
@@ -20,7 +20,7 @@ use systemctl::{SessionType, Systemctl};
 static LAST_START: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(Default::default);
 static WHICH_FLATPAK: LazyLock<Result<PathBuf, which::Error>> = LazyLock::new(|| which("flatpak"));
 static SERVICE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
-    get_my_home()
+    my_home()
         .transpose()
         .and_then(|x| x.ok())
         .map(|h| h.join(".config").join("systemd").join("user"))
