@@ -105,13 +105,17 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
                 Autostart::Boot => {
                     debug!("Enable service {name}");
                     if let Err(e) = systemctl::enable(name, *user_service).await {
-                        warn!("failed to enable external service via systemd. Autostart will not work: {e:?}");
+                        warn!(
+                            "failed to enable external service via systemd. Autostart will not work: {e:?}"
+                        );
                     }
                 }
                 _ => {
                     debug!("Disable service {name}");
                     if let Err(e) = systemctl::disable(name, *user_service).await {
-                        warn!("failed to disable external service via systemd. Service will still autostart: {e:?}");
+                        warn!(
+                            "failed to disable external service via systemd. Service will still autostart: {e:?}"
+                        );
                     }
                 }
             }

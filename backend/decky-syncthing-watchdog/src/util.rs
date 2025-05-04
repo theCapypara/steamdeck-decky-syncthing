@@ -1,6 +1,6 @@
+use hyper::Client;
 use hyper::body::HttpBody;
 use hyper::client::HttpConnector;
-use hyper::Client;
 use hyper_rustls::HttpsConnector;
 use rustls::client::{ServerCertVerified, ServerCertVerifier};
 use rustls::{Certificate, ClientConfig, Error, ServerName};

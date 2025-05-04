@@ -1,10 +1,10 @@
 use crate::proxy::handle_proxy;
-use crate::service::{get_state, init_service, start_service, stop_service, SyncthingState};
+use crate::service::{SyncthingState, get_state, init_service, start_service, stop_service};
 use crate::settings::{IsSetup, Mode, Settings, SettingsProvider};
 use anyhow::anyhow;
 use homedir::get_my_home;
 use hyper::http::uri::Scheme;
-use hyper::{body, Body, Request, Response, StatusCode, Uri};
+use hyper::{Body, Request, Response, StatusCode, Uri, body};
 use log::debug;
 use serde::Serialize;
 use std::fs::read_to_string;

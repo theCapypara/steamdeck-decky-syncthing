@@ -5,8 +5,8 @@ use std::convert::Infallible;
 use std::sync::Arc;
 use std::time::Duration;
 use sysinfo::{
-    set_open_files_limit, Pid, Process, ProcessExt, ProcessRefreshKind, ProcessStatus, System,
-    SystemExt,
+    Pid, Process, ProcessExt, ProcessRefreshKind, ProcessStatus, System, SystemExt,
+    set_open_files_limit,
 };
 use tokio::time::sleep;
 
