@@ -5,10 +5,12 @@ use anyhow::anyhow;
 use homedir::get_my_home;
 use hyper::http::uri::Scheme;
 use hyper::{Body, Request, Response, StatusCode, Uri, body};
-use log::debug;
+use log::{debug, warn};
 use serde::Serialize;
+use std::env;
 use std::fs::read_to_string;
 use std::net::Ipv4Addr;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 use sxd_xpath::evaluate_xpath;
 use tokio::time::sleep;
@@ -259,18 +261,51 @@ async fn get_config(settings: &Settings) -> Option<sxd_document::Package> {
         }
     };
 
-    let probable_path_to_settings = match settings.mode {
+    let possible_paths = match settings.mode {
         Mode::Systemd | Mode::SystemdSystem => {
-            home.join(".config").join("syncthing").join("config.xml")
+            let mut paths = Vec::with_capacity(4);
+            if let Ok(var) = env::var("XDG_STATE_HOME") {
+                paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
+            }
+            if let Ok(var) = env::var("XDG_CONFIG_HOME") {
+                paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
+            }
+            paths.push(
+                home.join(".local")
+                    .join("state")
+                    .join("syncthing")
+                    .join("config.xml"),
+            );
+            paths.push(home.join(".config").join("syncthing").join("config.xml"));
+            paths
         }
-        Mode::Flatpak => home
-            .join(".var")
-            .join("app")
-            .join(&settings.flatpak_name)
-            .join("config")
-            .join("syncthing")
-            .join("config.xml"),
+        Mode::Flatpak => vec![
+            home.join(".var")
+                .join("app")
+                .join(&settings.flatpak_name)
+                .join(".local")
+                .join("state")
+                .join("syncthing")
+                .join("config.xml"),
+            home.join(".var")
+                .join("app")
+                .join(&settings.flatpak_name)
+                .join("config")
+                .join("syncthing")
+                .join("config.xml"),
+        ],
     };
 
-    sxd_document::parser::parse(&read_to_string(probable_path_to_settings).ok()?).ok()
+    for path in possible_paths {
+        if let Some(config) = try_read_config(&path) {
+            debug!("detected config path: {}", path.display());
+            return Some(config);
+        }
+    }
+    warn!("did not find syncthing config file");
+    None
+}
+
+fn try_read_config(path: &Path) -> Option<sxd_document::Package> {
+    sxd_document::parser::parse(&read_to_string(path).ok()?).ok()
 }
