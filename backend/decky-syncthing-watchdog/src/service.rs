@@ -3,11 +3,11 @@
 //! If not in Flatpak mode: Uninstalls it (if exists) and controls the configured service.
 
 use crate::settings::{Autostart, Mode, Settings};
-use homedir::get_my_home;
-use lazy_static::lazy_static;
+use homedir::my_home;
 use log::{debug, info, warn};
 use std::io;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use std::time::Duration;
 use tokio::fs;
 use tokio::sync::Mutex;
@@ -15,17 +15,18 @@ use tokio::time::Instant;
 use which::which;
 
 pub use systemctl::State as SyncthingState;
+use systemctl::{SessionType, Systemctl};
 
-lazy_static! {
-    static ref LAST_START: Mutex<Option<Instant>> = Mutex::new(None);
-    static ref WHICH_FLATPAK: Result<PathBuf, which::Error> = which("flatpak");
-    static ref SERVICE_DIR: Option<PathBuf> = get_my_home()
+static LAST_START: LazyLock<Mutex<Option<Instant>>> = LazyLock::new(Default::default);
+static WHICH_FLATPAK: LazyLock<Result<PathBuf, which::Error>> = LazyLock::new(|| which("flatpak"));
+static SERVICE_DIR: LazyLock<Option<PathBuf>> = LazyLock::new(|| {
+    my_home()
         .transpose()
         .and_then(|x| x.ok())
-        .map(|h| h.join(".config").join("systemd").join("user"));
-}
+        .map(|h| h.join(".config").join("systemd").join("user"))
+});
 
-pub type ServiceError = io::Error;
+pub type ServiceError = anyhow::Error;
 
 enum ServiceType<'a> {
     Managed,
@@ -65,6 +66,7 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
     debug!("Init service");
     let service_type = ServiceType::get_for(settings);
     let managed_service_name = ServiceType::Managed.systemd_unit().0;
+    let systemctl_user = Systemctl::new(SessionType::Session).await?;
     match &service_type {
         ServiceType::Managed => {
             // Create/Update the managed service.
@@ -75,17 +77,17 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
                 &settings.flatpak_binary,
             )
             .await?;
-            systemctl::daemon_reload().await?;
+            systemctl_user.daemon_reload().await?;
             // Enable or disable the managed service based on autostart settings.
             match settings.autostart {
                 Autostart::Boot => {
                     debug!("Enable service {managed_service_name}");
-                    systemctl::enable(managed_service_name, true).await?;
+                    systemctl_user.enable(managed_service_name).await?;
                 }
                 _ => {
                     // if mode is gamescope, this process will start it manually.
                     debug!("Disable service {managed_service_name}");
-                    systemctl::disable(managed_service_name, true).await?;
+                    systemctl_user.disable(managed_service_name).await?;
                 }
             }
         }
@@ -93,25 +95,33 @@ pub async fn init_service(settings: &Settings) -> Result<(), ServiceError> {
             // Disable & delete the managed service.
             if service_exists_in_config(managed_service_name).await? {
                 debug!("Disable and delete managed service");
-                systemctl::disable(managed_service_name, true).await.ok();
+                systemctl_user.disable(managed_service_name).await.ok();
 
                 let r = delete_managed_service(managed_service_name).await;
                 if r.is_ok() {
-                    systemctl::daemon_reload().await.ok();
+                    systemctl_user.daemon_reload().await.ok();
                 }
             }
             // Enable or disable the external service based on autostart settings.
+            let systemctl_client = match *user_service {
+                true => systemctl_user,
+                false => Systemctl::new(SessionType::System).await?,
+            };
             match settings.autostart {
                 Autostart::Boot => {
                     debug!("Enable service {name}");
-                    if let Err(e) = systemctl::enable(name, *user_service).await {
-                        warn!("failed to enable external service via systemd. Autostart will not work: {e:?}");
+                    if let Err(e) = systemctl_client.enable(name).await {
+                        warn!(
+                            "failed to enable external service via systemd. Autostart will not work: {e:?}"
+                        );
                     }
                 }
                 _ => {
                     debug!("Disable service {name}");
-                    if let Err(e) = systemctl::disable(name, *user_service).await {
-                        warn!("failed to disable external service via systemd. Service will still autostart: {e:?}");
+                    if let Err(e) = systemctl_client.disable(name).await {
+                        warn!(
+                            "failed to disable external service via systemd. Service will still autostart: {e:?}"
+                        );
                     }
                 }
             }
@@ -125,7 +135,12 @@ pub async fn get_state(settings: &Settings) -> Result<SyncthingState, ServiceErr
     debug!("get_state");
     let service_type = ServiceType::get_for(settings);
     let (service_name, is_user_service) = service_type.systemd_unit();
-    systemctl::state(service_name, is_user_service).await
+    let systemctl_client = match is_user_service {
+        true => Systemctl::new(SessionType::Session),
+        false => Systemctl::new(SessionType::System),
+    }
+    .await?;
+    systemctl_client.state(service_name).await
 }
 
 pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
@@ -136,7 +151,12 @@ pub async fn start_service(settings: &Settings) -> Result<(), ServiceError> {
     debug!("start_service");
     let service_type = ServiceType::get_for(settings);
     let (service_name, is_user_service) = service_type.systemd_unit();
-    let r = systemctl::start(service_name, is_user_service).await;
+    let systemctl_client = match is_user_service {
+        true => Systemctl::new(SessionType::Session),
+        false => Systemctl::new(SessionType::System),
+    }
+    .await?;
+    let r = systemctl_client.start(service_name).await;
     if r.is_ok() {
         *LAST_START.lock().await = Some(Instant::now());
     }
@@ -151,7 +171,12 @@ pub async fn stop_service(settings: &Settings) -> Result<(), ServiceError> {
     debug!("stop_service");
     let service_type = ServiceType::get_for(settings);
     let (service_name, is_user_service) = service_type.systemd_unit();
-    systemctl::stop(service_name, is_user_service).await
+    let systemctl_client = match is_user_service {
+        true => Systemctl::new(SessionType::Session),
+        false => Systemctl::new(SessionType::System),
+    }
+    .await?;
+    systemctl_client.stop(service_name).await
 }
 
 pub async fn last_start_ago() -> Duration {
@@ -210,19 +235,177 @@ async fn service_exists_in_config(unit: &str) -> Result<bool, io::Error> {
     Ok(service_path(unit)?.exists())
 }
 
-mod systemctl {
-    use lazy_static::lazy_static;
-    use log::debug;
-    use std::io;
-    use std::iter::once;
-    use std::path::PathBuf;
-    use std::process::ExitStatus;
-    use tokio::io::AsyncReadExt;
-    use tokio::process::{Child, Command};
-    use which::which;
+pub mod systemctl {
+    use anyhow::anyhow;
+    use log::{debug, error};
+    use systemd_zbus::{ActiveState, JobRemovedArgs, ManagerProxy, Mode, ServiceProxy, UnitProxy};
+    use zbus::export::ordered_stream::OrderedStreamExt;
+    use zbus::zvariant::OwnedObjectPath;
 
-    lazy_static! {
-        static ref WHICH_SYSTEMCTL: Result<PathBuf, which::Error> = which("systemctl");
+    pub enum SessionType {
+        Session,
+        System,
+    }
+
+    pub struct Systemctl<'a>(zbus::Connection, ManagerProxy<'a>);
+
+    impl Systemctl<'_> {
+        pub async fn new(session_type: SessionType) -> anyhow::Result<Self> {
+            debug!("systemd: creating session");
+            let conn = match session_type {
+                SessionType::Session => zbus::Connection::session().await,
+                SessionType::System => zbus::Connection::system().await,
+            }?;
+            let proxy = ManagerProxy::new(&conn).await?;
+            Ok(Self(conn, proxy))
+        }
+
+        pub async fn daemon_reload(&self) -> anyhow::Result<()> {
+            debug!("systemd: reloading daemon");
+            Ok(self.1.reload().await?)
+        }
+
+        pub async fn start(&self, unit: &str) -> anyhow::Result<()> {
+            debug!("systemd: starting {unit}");
+            if !unit.ends_with(".service") {
+                let unit = format!("{unit}.service");
+                self.run_job(|proxy| proxy.start_unit(&unit, Mode::Replace))
+                    .await
+            } else {
+                self.run_job(|proxy| proxy.start_unit(unit, Mode::Replace))
+                    .await
+            }
+        }
+
+        pub async fn stop(&self, unit: &str) -> anyhow::Result<()> {
+            debug!("systemd: stopping {unit}");
+            if !unit.ends_with(".service") {
+                let unit = format!("{unit}.service");
+                self.run_job(|proxy| proxy.stop_unit(&unit, Mode::Replace))
+                    .await
+            } else {
+                self.run_job(|proxy| proxy.stop_unit(unit, Mode::Replace))
+                    .await
+            }
+        }
+
+        pub async fn enable(&self, unit: &str) -> anyhow::Result<()> {
+            debug!("systemd: enabling {unit}");
+            if !unit.ends_with(".service") {
+                let unit = format!("{unit}.service");
+                self.1.enable_unit_files(&[&unit], false, false).await?;
+            } else {
+                self.1.enable_unit_files(&[unit], false, false).await?;
+            }
+            Ok(())
+        }
+
+        pub async fn disable(&self, unit: &str) -> anyhow::Result<()> {
+            debug!("systemd: disabling {unit}");
+            if !unit.ends_with(".service") {
+                let unit = format!("{unit}.service");
+                self.1.disable_unit_files(&[&unit], false).await?;
+            } else {
+                self.1.disable_unit_files(&[unit], false).await?;
+            }
+            Ok(())
+        }
+
+        pub async fn state(&self, unit: &str) -> anyhow::Result<State> {
+            debug!("systemd: getting state for {unit}");
+            let unit_result = if !unit.ends_with(".service") {
+                let unit = format!("{unit}.service");
+                self.1.get_unit(&unit).await
+            } else {
+                self.1.get_unit(unit).await
+            };
+
+            let Ok(path) = unit_result else {
+                // Could probably also just error out.
+                return Ok(State::Failed);
+            };
+
+            let unit_obj = UnitProxy::builder(&self.0).path(path)?.build().await?;
+
+            Ok(match unit_obj.active_state().await? {
+                ActiveState::Active => State::Running,
+                ActiveState::Reloading => State::Running,
+                ActiveState::Inactive => State::Stopped,
+                ActiveState::Failed => State::Failed,
+                ActiveState::Activating => State::Stopped,
+                ActiveState::Deactivating => State::Stopped,
+                ActiveState::Maintenance => State::Stopped,
+            })
+        }
+
+        async fn run_job<'a, 'b, F, Fut>(&'a self, job: F) -> anyhow::Result<()>
+        where
+            F: FnOnce(&'a ManagerProxy<'a>) -> Fut,
+            Fut: Future<Output = zbus::Result<OwnedObjectPath>> + 'b,
+            'a: 'b,
+        {
+            let mut job_removed_stream = self.1.receive_job_removed().await?;
+            let result_path = job(&self.1).await?.into_inner();
+            while let Some(msg) = job_removed_stream.next().await {
+                let args = msg.args()?;
+                debug!(
+                    "systemd: job removed: {} for {}: {}",
+                    args.id, args.unit, args.result
+                );
+                if msg.args()?.job == result_path {
+                    debug!("systemd: our job, checking result");
+                    return self.check_job_status(args).await;
+                }
+            }
+            Err(anyhow!("failed to wait for job"))
+        }
+
+        // See https://github.com/systemd/systemd/blob/main/src/shared/bus-wait-for-jobs.c#L217 for reference
+        async fn check_job_status(&self, msg: JobRemovedArgs<'_>) -> anyhow::Result<()> {
+            match msg.result {
+                "done" | "skipped" => {
+                    debug!("systemd: job done or skipped");
+                    Ok(())
+                }
+                "canceled" | "timeout" | "dependency" | "invalid" | "assert" | "unsupported"
+                | "collected" | "once" | "frozen" | "concurrency" => {
+                    error!("systemd: job failed with status {}", msg.result);
+                    Err(anyhow!("systemd job failed with status {}", msg.result))
+                }
+                _result if _result.ends_with(".service") => {
+                    // Check service result
+                    let unit_path = self.1.get_unit(msg.unit).await?;
+                    let unit_obj = ServiceProxy::builder(&self.0)
+                        .path(unit_path)?
+                        .build()
+                        .await?;
+                    match &*unit_obj.result().await? {
+                        "success" => {
+                            debug!("systemd: service indicates job success");
+                            Ok(())
+                        }
+                        result => {
+                            error!(
+                                "systemd: job finished with unknown status {} - unit result: {}",
+                                msg.result, result
+                            );
+                            Err(anyhow!(
+                                "systemd job finished with unknown status {} - unit result: {}",
+                                msg.result,
+                                result
+                            ))
+                        }
+                    }
+                }
+                result => {
+                    error!("systemd: job finished with unknown status {}", result);
+                    Err(anyhow!(
+                        "systemd job finished with unknown status {}",
+                        result
+                    ))
+                }
+            }
+        }
     }
 
     #[derive(Debug, Clone, Copy)]
@@ -239,95 +422,6 @@ mod systemctl {
                 State::Stopped => "stopped",
                 State::Failed => "failed",
             }
-        }
-    }
-
-    /// Invokes `systemctl $args`
-    fn spawn_child(args: &[&str], is_user_service: bool) -> io::Result<Child> {
-        if is_user_service {
-            debug!("systemctl: --user {}", args.join(" "));
-            Command::new(
-                WHICH_SYSTEMCTL
-                    .as_ref()
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, *e))?,
-            )
-            .args(once("--user").chain(args.iter().copied()))
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-        } else {
-            debug!("systemctl: {}", args.join(" "));
-            Command::new(
-                WHICH_SYSTEMCTL
-                    .as_ref()
-                    .map_err(|e| io::Error::new(io::ErrorKind::Other, *e))?,
-            )
-            .args(args.iter().copied())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .spawn()
-        }
-    }
-
-    async fn systemctl_raw(args: Vec<&str>, is_user_service: bool) -> io::Result<ExitStatus> {
-        spawn_child(&args, is_user_service)?.wait().await
-    }
-
-    async fn systemctl(args: Vec<&str>, is_user_service: bool) -> io::Result<()> {
-        let mut child = spawn_child(&args, is_user_service)?;
-        let exit = child.wait().await?;
-        if exit.success() {
-            Ok(())
-        } else {
-            let mut stderr: Vec<u8> = Vec::new();
-            child.stderr.unwrap().read_to_end(&mut stderr).await?;
-            let stderr_str =
-                String::from_utf8(stderr).unwrap_or_else(|_| "<invalid/empty stderr>".to_string());
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!(
-                    "Failed to run systemctl command ('{}'): {}. Stderr: {}",
-                    args.first().unwrap(),
-                    exit,
-                    stderr_str
-                ),
-            ))
-        }
-    }
-
-    pub async fn daemon_reload() -> io::Result<()> {
-        systemctl(vec!["daemon-reload"], true).await
-    }
-
-    pub async fn start(unit: &str, is_user_service: bool) -> io::Result<()> {
-        systemctl(vec!["start", unit], is_user_service).await
-    }
-
-    pub async fn stop(unit: &str, is_user_service: bool) -> io::Result<()> {
-        systemctl(vec!["stop", unit], is_user_service).await
-    }
-
-    pub async fn enable(unit: &str, is_user_service: bool) -> io::Result<()> {
-        systemctl(vec!["enable", unit], is_user_service).await
-    }
-
-    pub async fn disable(unit: &str, is_user_service: bool) -> io::Result<()> {
-        systemctl(vec!["disable", unit], is_user_service).await
-    }
-
-    pub async fn state(unit: &str, is_user_service: bool) -> io::Result<State> {
-        if systemctl_raw(vec!["is-active", unit], is_user_service)
-            .await?
-            .success()
-        {
-            Ok(State::Running)
-        } else if systemctl_raw(vec!["is-failed", unit], is_user_service)
-            .await?
-            .success()
-        {
-            Ok(State::Failed)
-        } else {
-            Ok(State::Stopped)
         }
     }
 }

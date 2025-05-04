@@ -18,7 +18,9 @@ pub enum SettingsError {
     Io(#[from] io::Error),
     #[error("Error reading settings JSON: {0}")]
     SerdeJson(#[from] serde_json::Error),
-    #[error("Was not able to determine backend scheme due to a request not being sucessful to either HTTPS or HTTP.")]
+    #[error(
+        "Was not able to determine backend scheme due to a request not being sucessful to either HTTPS or HTTP."
+    )]
     BackendOffline,
     #[error("Error during an HTTP request: {0}")]
     Hyper(#[from] hyper::http::Error),

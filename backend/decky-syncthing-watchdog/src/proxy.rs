@@ -7,22 +7,20 @@ use hyper::header::AUTHORIZATION;
 use hyper::{Body, Request, Response, Uri};
 use hyper_reverse_proxy::ReverseProxy;
 use hyper_rustls::HttpsConnector;
-use lazy_static::lazy_static;
 use log::warn;
 use std::convert::Infallible;
 use std::fmt::Debug;
 use std::mem::take;
 use std::net::IpAddr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 const RESPONSE_BAD_GATEWAY: &str =
     "<html><body><h1>Bad Gateway</h1><p>Is Syncthing running?</p></body></html>";
 const RESPONSE_TOO_EARLY: &str = "<html><body><h1>Too Early</h1><p>Syncthing is still starting, try again in a moment.</p></body></html>";
 
-lazy_static! {
-    static ref REVERSE_CLIENT: ReverseProxy<HttpsConnector<HttpConnector>> =
-        ReverseProxy::new(make_unsafe_https_client::<Body>());
-}
+static REVERSE_CLIENT: LazyLock<ReverseProxy<HttpsConnector<HttpConnector>>> =
+    LazyLock::new(|| ReverseProxy::new(make_unsafe_https_client::<Body>()));
 
 pub async fn handle_proxy(
     client_ip: IpAddr,

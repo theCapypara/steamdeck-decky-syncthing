@@ -5,7 +5,7 @@ use hyper::{Body, Method, Request, Response, StatusCode};
 use log::debug;
 use std::collections::HashMap;
 use std::convert::Infallible;
-use std::error::Error;
+use std::fmt::Display;
 use std::net::IpAddr;
 
 const STATE_ROUTE: &str = "/__decky-watchdog/state";
@@ -87,7 +87,7 @@ pub fn make_empty_response() -> Result<Response<Body>, Infallible> {
         .unwrap())
 }
 
-pub fn make_error_response(err: &dyn Error) -> Result<Response<Body>, Infallible> {
+pub fn make_error_response(err: &dyn Display) -> Result<Response<Body>, Infallible> {
     Ok(Response::builder()
         .status(StatusCode::INTERNAL_SERVER_ERROR)
         .body(Body::from(format!(
