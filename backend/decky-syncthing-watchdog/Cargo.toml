@@ -9,10 +9,9 @@ hyper = { version = "0.14", features = ["client", "server", "http1", "http2"] }
 rustls = { version = "0.21", features = ["dangerous_configuration"] }
 hyper-rustls = "0.24"
 hyper-reverse-proxy = { git = "https://github.com/felipenoris/hyper-reverse-proxy.git", rev = "e73a76600ce9e51e962de5266b03be596e6c1d50" }
-tokio = { version = "1.44", features = ["rt", "macros", "fs", "process"] }
+tokio = { version = "1.44", features = ["rt", "macros", "fs", "process", "rt-multi-thread"] }
 log = "0.4"
 log4rs = "1.3"
-lazy_static = "1.5"
 thiserror = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1"
@@ -23,3 +22,5 @@ which = "6.0"
 anyhow = "1.0"
 sxd-document = "0.3"
 sxd-xpath = "0.4"
+zbus = "5.6"
+systemd-zbus = "5.2"

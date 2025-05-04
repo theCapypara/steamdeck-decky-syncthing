@@ -89,7 +89,7 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
             }),
             Mode::Flatpak => {
                 // In Flatpak mode, this shouldn't fail.
-                Err(err.into())
+                Err(err)
             }
         };
     }
