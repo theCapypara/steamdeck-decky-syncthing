@@ -54,6 +54,14 @@ const StartingPage: FunctionComponent<SetupPageProps> = ({nextPage, backPage, se
                     Systemd user service 'decky-syncthing' that this plugin created based on your settings.
                 </p>
             );
+        } else if (statePassedInCast.type == "syncthingy") {
+            help = `Make sure you have Syncthingy installed and enabled the background service.`;
+            moreHelp = (
+                <p className={"syncthing-details"}>
+                    The plugin needs you to have the background service installed and enabled.<br/>
+                    Please see the documentation of Syncthingy for more information.
+                </p>
+            );
         } else if (statePassedInCast.type == "systemd_system") {
             help = `Make sure the Systemd system service with the ID '${statePassedInCast.systemdService}' exists.`;
             moreHelp = (

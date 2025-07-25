@@ -1,10 +1,11 @@
 use crate::proxy::handle_proxy;
 use crate::service::{SyncthingState, get_state, init_service, start_service, stop_service};
 use crate::settings::{IsSetup, Mode, Settings, SettingsProvider};
+use crate::util::make_unsafe_https_client;
 use anyhow::anyhow;
 use homedir::my_home;
 use hyper::http::uri::Scheme;
-use hyper::{Body, Request, Response, StatusCode, Uri, body};
+use hyper::{Body, Method, Request, Response, StatusCode, Uri, body};
 use log::{debug, warn};
 use serde::Serialize;
 use std::env;
@@ -35,9 +36,7 @@ pub async fn run_check(
     } else if route.starts_with(SCAN_PORT_ROUTE) {
         Ok(Some(to_json_response(&scan_port(settings).await?)?))
     } else if route.starts_with(SCAN_API_KEY_ROUTE) {
-        Ok(Some(to_json_response(
-            &scan_api_key(&*settings.settings().await).await?,
-        )?))
+        Ok(Some(to_json_response(&scan_api_key(settings).await?)?))
     } else if route.starts_with(SCAN_BASIC_AUTH_ROUTE) {
         Ok(Some(to_json_response(
             &basic_auth(&*settings.settings().await).await?,
@@ -210,18 +209,67 @@ struct ScanApiKeyResponse {
     api_key: Option<String>,
 }
 
-async fn scan_api_key(settings: &Settings) -> Result<ScanApiKeyResponse, anyhow::Error> {
+async fn scan_api_key(settings: &SettingsProvider) -> Result<ScanApiKeyResponse, anyhow::Error> {
     if TESTING_AUTO_FAIL_SCANS {
         return Ok(ScanApiKeyResponse { api_key: None });
     }
 
-    Ok(ScanApiKeyResponse {
-        api_key: get_config(settings).await.and_then(|config| {
+    let api_key = get_config(&*settings.settings().await)
+        .await
+        .and_then(|config| {
             let doc = config.as_document();
             let api_key = evaluate_xpath(&doc, "/configuration/gui/apikey").ok()?;
             Some(api_key.string())
-        }),
-    })
+        });
+
+    if let Some(api_key) = api_key.as_ref() {
+        if !test_api_key(settings, api_key).await {
+            return Ok(ScanApiKeyResponse { api_key: None });
+        }
+    }
+
+    Ok(ScanApiKeyResponse { api_key })
+}
+
+/// Check if an API key is actually usable
+async fn test_api_key(settings: &SettingsProvider, key: &str) -> bool {
+    let client = make_unsafe_https_client::<Body>();
+    match settings.backend_uri().await {
+        Ok((_, backend_uri)) => {
+            let uri = format!("{backend_uri}rest/system/status");
+            debug!("Testing API key against {}", uri);
+            let req = hyper::Request::builder()
+                .method(Method::GET)
+                .uri(uri)
+                .header("X-API-Key", key)
+                .body(Body::empty())
+                .unwrap();
+            match client.request(req).await {
+                Ok(res) => {
+                    if res.status().is_success() {
+                        true
+                    } else {
+                        warn!(
+                            "Testing the API key failed due to non 200-response: {}",
+                            res.status()
+                        );
+                        false
+                    }
+                }
+                Err(err) => {
+                    warn!("Testing the API key failed due to request failure: {}", err);
+                    false
+                }
+            }
+        }
+        Err(err) => {
+            warn!(
+                "Testing the API key failed due to failing to get backend URI: {}",
+                err
+            );
+            false
+        }
+    }
 }
 
 #[derive(Debug, Serialize)]
@@ -261,40 +309,44 @@ async fn get_config(settings: &Settings) -> Option<sxd_document::Package> {
         }
     };
 
-    let possible_paths = match settings.mode {
-        Mode::Systemd | Mode::SystemdSystem => {
-            let mut paths = Vec::with_capacity(4);
-            if let Ok(var) = env::var("XDG_STATE_HOME") {
-                paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
-            }
-            if let Ok(var) = env::var("XDG_CONFIG_HOME") {
-                paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
-            }
-            paths.push(
-                home.join(".local")
-                    .join("state")
-                    .join("syncthing")
-                    .join("config.xml"),
-            );
-            paths.push(home.join(".config").join("syncthing").join("config.xml"));
-            paths
-        }
-        Mode::Flatpak => vec![
+    let mut possible_paths = Vec::with_capacity(6);
+    if settings.mode == Mode::Flatpak || settings._wizard_force_flatpak_config_for.is_some() {
+        let flatpak_name = settings
+            ._wizard_force_flatpak_config_for
+            .as_deref()
+            .unwrap_or(&settings.flatpak_name);
+        possible_paths.push(
             home.join(".var")
                 .join("app")
-                .join(&settings.flatpak_name)
+                .join(flatpak_name)
                 .join(".local")
                 .join("state")
                 .join("syncthing")
                 .join("config.xml"),
+        );
+        possible_paths.push(
             home.join(".var")
                 .join("app")
-                .join(&settings.flatpak_name)
+                .join(flatpak_name)
                 .join("config")
                 .join("syncthing")
                 .join("config.xml"),
-        ],
-    };
+        );
+    }
+
+    if let Ok(var) = env::var("XDG_STATE_HOME") {
+        possible_paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
+    }
+    if let Ok(var) = env::var("XDG_CONFIG_HOME") {
+        possible_paths.push(PathBuf::from(var).join("syncthing").join("config.xml"));
+    }
+    possible_paths.push(
+        home.join(".local")
+            .join("state")
+            .join("syncthing")
+            .join("config.xml"),
+    );
+    possible_paths.push(home.join(".config").join("syncthing").join("config.xml"));
 
     for path in possible_paths {
         if let Some(config) = try_read_config(&path) {

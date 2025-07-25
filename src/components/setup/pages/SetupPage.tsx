@@ -11,7 +11,8 @@ import {loadSettingsForWizardPage} from "../util/loadSettingsForWizardPage";
 export type ApplyConfig =
     {type: "systemd", systemdService: string}
     | {type: "systemd_system", systemdService: string}
-    | {type: "flatpak", flatpakName: string; flatpakBinary: string};
+    | {type: "flatpak", flatpakName: string; flatpakBinary: string}
+    | {type: "syncthingy", systemdService: string, flatpakName: string};
 
 const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, backPage, serverApi}) => {
     const [loading, setLoading] = useState(true);
@@ -21,16 +22,37 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
         (async () => {
             // Set settings
             let promises = [];
-            promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
-                setting: "mode",
-                value: applyConf.type,
-            }));
             if (applyConf.type === "systemd" || applyConf.type === "systemd_system") {
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "mode",
+                    value: applyConf.type,
+                }));
                 promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
                     setting: "service_name",
                     value: applyConf.systemdService,
                 }));
-            } else {
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "_wizard_force_flatpak_config_for",
+                    value: null,
+                }));
+            } if (applyConf.type === "syncthingy") {
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "mode",
+                    value: "systemd",
+                }));
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "service_name",
+                    value: applyConf.systemdService,
+                }));
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "_wizard_force_flatpak_config_for",
+                    value: applyConf.flatpakName,
+                }));
+            } else if (applyConf.type === "flatpak") {
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "mode",
+                    value: applyConf.type,
+                }));
                 promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
                     setting: "flatpak_name",
                     value: applyConf.flatpakName,
@@ -38,6 +60,10 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
                 promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
                     setting: "flatpak_binary",
                     value: applyConf.flatpakBinary,
+                }));
+                promises.push(serverApi.callPluginMethod<SetSettingParams, void>(PLUGIN_API_SET_SETTING, {
+                    setting: "_wizard_force_flatpak_config_for",
+                    value: null,
                 }));
             }
             await Promise.all(promises);
@@ -97,9 +123,6 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
                     <p>
                         Please enter the ID of the Flatpak. Advanced users can also configure a different binary to launch.
                         The default "syncthing" should work for most cases.
-                        <br/>
-                        Please note that no other Flatpaks except for "Syncthing GTK" are supported or tested at the moment.
-                        Especially the "Syncthingy" Flatpak has issues with this plugin.
                     </p>
                 </DialogControlsSection>
                 <DialogControlsSection>
@@ -190,6 +213,11 @@ const SetupPage: FunctionComponent<SetupPageProps> = ({statePassedIn, nextPage, 
     } else if (statePassedIn.type == "flatpak") {
         applySettingsAndContinue(
             {type: "flatpak", flatpakName: statePassedIn.name, flatpakBinary: "syncthing"}
+        );
+        body = <Loader fullScreen={true}/>;
+    } else if (statePassedIn.type == "syncthingy") {
+        applySettingsAndContinue(
+            {type: "syncthingy", systemdService: statePassedIn.systemd, flatpakName: statePassedIn.flatpak}
         );
         body = <Loader fullScreen={true}/>;
     } else {

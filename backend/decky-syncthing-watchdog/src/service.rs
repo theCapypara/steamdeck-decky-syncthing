@@ -204,7 +204,7 @@ async fn create_managed_service(
     fs::create_dir_all(path.parent().unwrap()).await?;
     let flatpak_cmd = WHICH_FLATPAK
         .as_ref()
-        .map_err(|e| io::Error::new(io::ErrorKind::Other, *e))?
+        .map_err(|e| io::Error::other(*e))?
         .to_str()
         .unwrap();
     fs::write(
