@@ -72,6 +72,10 @@ pub struct Settings {
     pub basic_auth_user: String,
     pub basic_auth_pass: String,
     pub is_setup: IsSetup,
+    // Only for the wizard (checks.rs) - if set force looking for the Syncthing configuration XML
+    // in a Flatpak settings directory, even if the `flatpak` mode is not enabled. The value
+    // is the name of the Flatpak
+    pub _wizard_force_flatpak_config_for: Option<String>,
 }
 
 impl Settings {

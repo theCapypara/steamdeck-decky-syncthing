@@ -3,7 +3,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
-from typing import TypedDict, Literal, Union
+from typing import TypedDict, Literal, Union, NotRequired, Optional
 
 from decky_plugin import (
     logger,
@@ -53,6 +53,10 @@ class SettingsV2(TypedDict):
     # if not True, show wizard and do not run any services.
     # If "migrating" the UI will be optimized for migrating to V2:
     is_setup: Union[bool, Literal["migratingV2"]]
+    # Only for the wizard - if set force looking for the Syncthing configuration XML
+    # in a Flatpak settings directory, even if the `flatpak` mode is not enabled. The value
+    # is the name of the Flatpak
+    _wizard_force_flatpak_config_for: NotRequired[Optional[str]]
 
 
 # noinspection PyAttributeOutsideInit
@@ -67,7 +71,8 @@ class Plugin:
         start_watchdog()
 
     async def set_setting(self, setting: str, value: any):
-        if setting not in self.settings:
+        # TODO: Could do this nicer with some typing magic.
+        if setting not in self.settings and setting != "_wizard_force_flatpak_config_for":
             logger.error(f"Unknown setting: {setting}")
             raise KeyError(f"Unknown setting: {setting}")
         # Sometimes the frontend lib doesn't properly convert the data types, make sure it's correct

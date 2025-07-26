@@ -74,7 +74,7 @@ const ApikeyPage: FunctionComponent<SetupPageProps> = ({nextPage, backPage, serv
                     <DialogControlsSection>
                         <p>
                             The API key for Syncthing's API could not be detected. Please enter the currently
-                            configured API keys. You can find this value in the settings of the Syncthing web UI.
+                            configured API key. You can find this value in the settings of the Syncthing web UI.
                         </p>
                     </DialogControlsSection>
                     <DialogControlsSection>
