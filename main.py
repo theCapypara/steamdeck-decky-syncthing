@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 from pathlib import Path
+from shutil import which
 from typing import TypedDict, Literal, Union, NotRequired, Optional
 
 from decky_plugin import (
@@ -115,6 +116,7 @@ def start_watchdog():
     """
     logger.info("Watchdog starting...")
     env = dict(os.environ)
+    patch_env(env)
     # On the real Deck the session bus variable may not be set. This is not bulletproof, but what can you do:
     if "DBUS_SESSION_BUS_ADDRESS" not in env:
         env["DBUS_SESSION_BUS_ADDRESS"] = f"unix:path=/run/user/{os.getuid()}/bus"
@@ -196,13 +198,39 @@ async def migrate_settings_v2(old: SettingsV1) -> SettingsV2:
 
 async def reset_all_processes():
     # Force exit all Syncthing related processes. This will also exit the (old) watchdog.
-    subprocess.Popen(
-        [
-            "/usr/bin/killall",
-            '-r',
-            '.*syncthing.*'
-        ],
-        env=dict(os.environ),
-        start_new_session=True,
-    )
+    env = patch_env(dict(os.environ))
+    # Use pkill if we find it
+    pkill = which("pkill")
+    killall = which("killall")
+    if pkill is not None:
+        logger.info("Killing all syncthing processes with pkill...")
+        subprocess.Popen(
+            [
+                pkill,
+                'syncthing'
+            ],
+            env=env,
+            start_new_session=True,
+        )
+    elif killall is not None:
+        # Otherwise fallback to killall
+        logger.info("Killing all syncthing processes with killall...")
+        subprocess.Popen(
+            [
+                killall,
+                '-r',
+                '.*syncthing.*'
+            ],
+            env=patch_env(dict(os.environ)),
+            start_new_session=True,
+        )
+    else:
+        logger.warning("Could not kill watchdog, neither killall nor pkill found!")
     await asyncio.sleep(2)
+
+
+def patch_env(env):
+    # Empty LD_LIBRARY_PATH mandatory for compatibility reasons. At the time of writing sadly only documented on Discord:
+    # https://discord.com/channels/960281551428522045/960284327445418044/1399778816670437568
+    env["LD_LIBRARY_PATH"] = ""
+    return env
