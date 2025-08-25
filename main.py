@@ -221,7 +221,7 @@ async def reset_all_processes():
                 '-r',
                 '.*syncthing.*'
             ],
-            env=patch_env(dict(os.environ)),
+            env=env,
             start_new_session=True,
         )
     else:
