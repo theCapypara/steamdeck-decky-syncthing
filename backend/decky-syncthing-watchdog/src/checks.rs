@@ -69,6 +69,7 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
     sleep(Duration::from_secs(1)).await;
 
     if let Err(err) = init_service(&settings).await {
+        warn!("Error during start check (init): {err:?}");
         return match settings.mode {
             Mode::Systemd => Ok(StartResponse {
                 success: false,
@@ -94,6 +95,7 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
     }
 
     if let Err(err) = start_service(&settings).await {
+        warn!("Error during start check (start): {err:?}");
         return Ok(StartResponse {
             success: false,
             error: Some("Failed to start Syncthing.".to_string()),
@@ -122,6 +124,7 @@ async fn start_check(settings: &Settings) -> Result<StartResponse, anyhow::Error
         ),
     };
 
+    warn!("Error during start check (unknown)");
     Ok(StartResponse {
         success: false,
         error: Some(error),
