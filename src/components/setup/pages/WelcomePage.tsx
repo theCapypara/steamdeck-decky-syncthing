@@ -28,6 +28,9 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
             case "syncthingy":
                 nextPage({type: "syncthingy", systemd: "syncthingy", flatpak: "com.github.zocker_160.SyncThingy"});
                 break;
+            case "syncthingtray":
+                nextPage({type: "syncthingy", systemd: "syncthingy", flatpak: "io.github.martchus.syncthingtray"});
+                break;
             case "none":
                 nextPage({type: "none"});
                 break;
@@ -69,6 +72,10 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                             </span>
                         </span>
                     </div>
+                </DialogButton>
+                <DialogButton onClick={() => select("syncthingtray")}>
+                    <div style={{fontWeight: 600}}>Install syncthing-tray</div>
+                    <div style={{fontSize: 12, color: "#666"}}>Flatpak: io.github.martchus.syncthingtray</div>
                 </DialogButton>
                 <DialogButton onClick={() => select("syncthing-gtk")}>
                     <div className="syncthing-entity-label">
