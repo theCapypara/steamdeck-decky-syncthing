@@ -214,7 +214,7 @@ async fn create_managed_service(
 Description=Decky managed Syncthing starter - Open Source Continuous File Synchronization
 
 [Service]
-ExecStart={} run --die-with-parent --command={} {} -no-browser -no-restart
+ExecStart={} run --die-with-parent --command={} {} --no-browser --no-restart
 Restart=on-failure
 SuccessExitStatus=3 4
 RestartForceExitStatus=3 4
