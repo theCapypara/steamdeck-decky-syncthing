@@ -22,6 +22,8 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                 break;
             case "syncthing-gtk":
                 service_or_flatpak_name = "me.kozec.syncthingtk"
+            case "syncthing-tray":
+                service_or_flatpak_name = "io.github.martchus.syncthingtray"
             case "other-flatpak":
                 nextPage({type: "flatpak", name: service_or_flatpak_name});
                 break;
@@ -78,6 +80,18 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                             <br/>
                             <span className="syncthing-entity-label--description">
                                 ID: <pre>me.kozec.syncthingtk</pre>
+                            </span>
+                        </span>
+                    </div>
+                </DialogButton>
+                <DialogButton onClick={() => select("syncthing-tray")}>
+                    <div className="syncthing-entity-label">
+                        <span className="syncthing-entity-label--icons"><FaBoxOpen/></span>
+                        <span className="syncthing-entity-label--detailed-label">
+                            Installed via the "Syncthing Tray" Flatpak
+                            <br/>
+                            <span className="syncthing-entity-label--description">
+                                ID: <pre>io.github.martchus.syncthingtray</pre>
                             </span>
                         </span>
                     </div>
