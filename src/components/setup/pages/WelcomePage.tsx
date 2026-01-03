@@ -21,11 +21,9 @@ const WelcomePage: FunctionComponent<SetupPageProps> = ({nextPage}) => {
                 nextPage({type: "system_system", name: service_or_flatpak_name});
                 break;
             case "syncthing-gtk":
-                service_or_flatpak_name = "me.kozec.syncthingtk"
+                service_or_flatpak_name = "me.kozec.syncthingtk";
             case "syncthing-tray":
-                if (service_or_flatpak_name === null) {
-                    service_or_flatpak_name = "io.github.martchus.syncthingtray";
-                }
+                service_or_flatpak_name = service_or_flatpak_name ?? "io.github.martchus.syncthingtray";
             case "other-flatpak":
                 nextPage({type: "flatpak", name: service_or_flatpak_name});
                 break;
